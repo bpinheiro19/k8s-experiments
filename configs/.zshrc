@@ -11,7 +11,6 @@ export ZSH="$HOME/.oh-my-zsh"
 #ZSH_THEME="agnoster"
 ZSH_THEME="lukerandall"
 
-
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
 # a theme from this variable instead of looking in $ZSH/themes/
@@ -102,26 +101,47 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-export DOTNET_ROOT=$HOME/.dotnet
-export PATH=$PATH:$HOME/.dotnet:$HOME/.dotnet/tools
+export GO111MODULE=on
 
-#export KUBECONFIG=kubeconfig:/home/bpinheiro/.kube/config
-export KUBECONFIG=/home/bpinheiro/.kube/config
+export DOTNET_ROOT=$HOME/.dotnet
+export PATH=$PATH:$HOME/.dotnet:$HOME/.dotnet/tools:$HOME/.local/bin
+
+export KUBECONFIG=$HOME/.kube/config
 source <(kubectl completion zsh)
 
-alias cd_dev='cd /home/bpinheiro/dev'
+alias cd_dev='cd $HOME/dev'
+
+##Kubernetes
 alias k='kubectl'
+alias kaf='kubectl apply -f $1'
+alias kdf='kubectl delete -f $1'
+alias kdp='kubectl delete pod $1 --force --grace-period=0'
+alias kgp='kubectl get pods $1'
+alias kgpsystem='kubectl get pods -n kube-system'
+alias kexec='k exec -it $1 -- /bin/bash'
 alias kgetall='kubectl get nodes,pod,svc,ing -A -o wide'
 alias wkgetall='watch kubectl get nodes,pod,svc,ing -A -o wide'
+
+## Kubectl config
 alias kx='f() { [ "$1" ] && kubectl config use-context $1 || kubectl config get-contexts ; } ; f'
-alias ghist='f(){ history | grep "$@";  unset -f f; }; f'
-alias debug-node='f(){ [ "$1" ] && kubectl debug node/"$1" -it --image=mcr.microsoft.com/dotnet/runtime-deps:6.0 ; } ; f'
-alias deploy_netdeb="kubectl run netdeb --image=acrbp.azurecr.io/netdeb"
-alias aksh="/bin/bash /home/bpinheiro/dev/k8s-experiments/scripts/aksh/aksh.sh"
-alias acih="/bin/bash /home/bpinheiro/dev/k8s-experiments/scripts/acih/acih.sh"
-alias aroh="/bin/bash /home/bpinheiro/dev/k8s-experiments/scripts/aroh/aroh.sh"
-alias sshnode="/bin/bash /home/bpin/bp/dev/k8s-experiments/scripts/sshnode/sshnode.sh"
 alias kxd='f() { [ "$1" ] && kubectl config delete-context $1 && kubectl config delete-cluster $1 ; } ; f'
+
+## AKS scripts
+alias aksh="/bin/bash $HOME/dev/k8s-experiments/scripts/aksh/aksh.sh"
+alias aroh="/bin/bash $HOME/dev/k8s-experiments/scripts/aroh/aroh.sh"
+alias acih="/bin/bash /$HOME/dev/k8s-experiments/scripts/acih/acih.sh"
+alias sshnode="/bin/bash $HOME/dev/k8s-experiments/scripts/sshnode/sshnode.sh"
+alias kssh="/bin/bash $HOME/dev/k8s-experiments/scripts/kssh/kssh.sh"
+
+## Terraform
+alias tfp='terraform plan -out main.tfplan'
+alias tfa='terraform apply main.tfplan'
+alias tfd='terraform destroy --auto-approve'
+alias tfpa='terraform plan -out main.tfplan && terraform apply main.tfplan'
+
+## Others
+alias ghist='f(){ history | grep "$@" | less;  unset -f f; }; f'
+alias k9s="docker run --rm -it -v $KUBECONFIG:/root/.kube/config quay.io/derailed/k9s"
 
 function fnode() {
   kubectl get nodes | tail -n +2 | awk '{print $1}'

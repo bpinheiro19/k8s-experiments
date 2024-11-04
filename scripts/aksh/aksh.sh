@@ -2,15 +2,18 @@
 
 date="$(date +%s)"
 rg="aks-rg"
-location="uksouth"
+location="swedencentral"
 
 #AKS
 aks="aks$date"
 serviceCidr=10.0.242.0/24
+podCIDR=172.16.0.0/16 
 dnsIp=10.0.242.10
 sku="standard_d2as_v4" #"standard_b2s" Cheaper option
 nodeCount=1
-networkPlugin="azure"
+
+#AKS Networking
+
 
 #VNET
 vnet="vnet$date"
@@ -20,7 +23,7 @@ subnetAddr=10.0.240.0/24
 
 #VM
 vm="aksVM"
-vmImage="UbuntuLTS"
+vmImage="Ubuntu2204"
 adminUser="azureuser"
 sshLocation="~/.ssh/id_rsa.pub"
 
@@ -28,21 +31,59 @@ sshLocation="~/.ssh/id_rsa.pub"
 aks() {
 
     for arg in "$@"; do
+        echo "####################################################"
+        echo "##        Azure Kubernetes Service helper         ##"
+        echo "####################################################"
 
         case "$arg" in
+
         create)
+            echo "#########################################################"
+            echo "## 1 - AKS cluster with kubenet                        ##"
+            echo "## 2 - AKS cluster with azure cni                      ##"
+            echo "## 3 - Private AKS cluster with kubenet azure cni      ##"
+            echo "## 4 - Private AKS cluster with azure cni              ##"
+            echo "## 5 - AKS cluster with kubenet, AAD and Azure RBAC    ##"
+            echo "## 6 - AKS cluster with azure cni, defender and policy ##"
+            echo "## 7 - AKS cluster with monitoring                     ##"
+            echo "## 8 - Standalone VM                                   ##"
+            echo "#########################################################"
 
             while true; do
 
-                read -p "Do you want to create a private cluster: (y/n)" yn
+                read -p "Option: " opt
 
-                case $yn in
-                y | yes)
-                    createPrivateCluster
+                case $opt in
+                1)
+                    createPublicKubenetCluster
                     break
                     ;;
-                n | no)
-                    createPublicCluster
+                2)
+                    createPublicCNICluster
+                    break
+                    ;;
+                3)  
+                    createPrivateKubenetCluster
+                    break
+                    ;;
+                4)
+                    createPrivateCNICluster
+                    break
+                    ;;
+                5)
+                    createPublicAADCluster
+                    break
+                    ;;
+                6)
+                    createPublicCNIPolicyDefenderCluster
+                    break
+                    ;;
+                7)
+                    createPublicCNIMonitoringCluster
+                    break
+                    ;;
+                8)
+                    createVM
                     break
                     ;;
                 esac
@@ -103,41 +144,70 @@ createRG(){
 
 createVNET(){
     echo "Creating vnet and subnet"
-    az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $subnet --subnet-prefixes $subnetAddr
+    az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $subnet --subnet-prefixes $subnetAddr -l $location
 }
 
-createPublicCluster() {
-    
-    createRG
+createPublicCNICluster() {
+    echo "Creating AKS cluster with azure cni"
+    createPublicCluster azure
+}
 
+createPublicKubenetCluster(){
+    echo "Creating AKS cluster with kubenet"
+    createPublicCluster kubenet "--pod-cidr $podCIDR"
+}
+
+createPublicAADCluster(){
+    echo "Creating AKS cluster withazure cni"
+    createPublicCluster azure "--enable-aad --enable-azure-rbac"
+}
+
+createPrivateKubenetCluster(){
+    createPrivateCluster kubenet
+}
+
+createPrivateCNICluster(){
+    createPrivateCluster azure 
+}
+
+createPublicCNIPolicyDefenderCluster() {
+    echo "Creating AKS cluster with azure cni, defender and policy"
+    createPublicCluster azure "--enable-defender --enable-addons azure-policy"
+}
+
+createPublicCNIMonitoringCluster() {
+    echo "Creating AKS cluster with monitoring and prometheus"
+    createPublicCluster azure "--enable-azure-monitor-metrics --enable-addons monitoring"
+}
+
+createPublicCluster(){
+    createRG
     createVNET
 
     subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
-
-    echo "Creating AKS cluster"
-    az aks create -g $rg -n $aks --network-plugin $networkPlugin --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount
-
+    
+    echo "Creating AKS cluster with kubenet"
+    az aks create -g $rg -n $aks -l $location --network-plugin $1 --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount $2
+    #--network-policy calico implementation missing
+    
     echo "az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
 }
 
 createPrivateCluster() {
-    
     createRG
-
     createVNET
 
     subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
 
     echo "Creating private AKS cluster"
-    az aks create -g $rg -n $aks --network-plugin $networkPlugin --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount --enable-private-cluster --disable-public-fqdn
+    az aks create -g $rg -n $aks -l $location --network-plugin $1 --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount --enable-private-cluster
 
     createVM
-
 }
 
 createVM(){
     echo "Creating Azure VM in the same vnet"
-    az vm create -g $rg -n $vm --image $vmImage --vnet-name $vnet --admin-username $adminUser --ssh-key-value $sshLocation
+    az vm create -g $rg -n $vm -l $location --image $vmImage --vnet-name $vnet --admin-username $adminUser --ssh-key-value $sshLocation
 }
 
 main() {

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-azurefile
+  labels:
+    app: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - image: mcr.microsoft.com/oss/nginx/nginx:1.19.5
+        name: nginx-azurefile
+        command:
+          - "/bin/bash"
+          - "-c"
+          - set -euo pipefail; while true; do echo $(date) >> /mnt/azurefile/outfile; sleep 1; done
+        volumeMounts:
+        - name: persistent-storage
+          mountPath: "/mnt/azurefile"
+      volumes:
+        - name: persistent-storage
+          persistentVolumeClaim:
+            claimName: pvc-azurefile

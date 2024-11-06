@@ -1,0 +1,26 @@
+apiVersion: 2021-10-01
+type: Microsoft.ContainerInstance/containerGroups
+location: uksouth
+name: bpacitest1234567
+properties:
+  osType: Linux
+  containers:
+  - name: myssql
+    properties:
+      image: mcr.microsoft.com/mssql/server:2022-latest
+      resources:
+        requests:
+          cpu: 2
+          memoryInGb: 2
+      ports:
+      - port: 80
+        protocol: TCP
+      - port: 1433
+        protocol: TCP
+      environmentVariables:
+      - name: "ACCEPT_EULA"
+        value: "Y"
+      - name: "MSSQL_SA_PASSWORD"
+        value: "123$"
+restartPolicy: Never
+      

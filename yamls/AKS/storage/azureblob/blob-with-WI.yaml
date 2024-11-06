@@ -1,0 +1,117 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    azure.workload.identity/client-id: <ID>
+  name: sa-app1
+  namespace: test
+---
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: azureblob-fuse-fleet-premium
+mountOptions:
+- -o allow_other
+- -o attr_timeout=120
+- -o entry_timeout=120
+- -o negative_timeout=120
+- --file-cache-timeout-in-seconds=120
+- --use-attr-cache=true
+- --cancel-list-on-mount-seconds=10
+- --log-level=LOG_WARNING
+- --cache-size-mb=1000
+parameters:
+  containerName: fleet
+  protocol: fuse
+  resourceGroup: rg
+  storageAccount: bpstracc
+provisioner: blob.csi.azure.com
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  annotations:
+    pv.kubernetes.io/provisioned-by: blob.csi.azure.com
+  name: pv-blob
+  namespace: test
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain  # If set as 'Delete' container would be removed after pvc deletion
+  storageClassName: azureblob-fuse-fleet-premium
+  csi:
+    driver: blob.csi.azure.com
+    # make sure volumeid is unique for every identical storage blob container in the cluster
+    # character `#` and `/` are reserved for internal use and cannot be used in volumehandle
+    volumeHandle: staspaceopsweu1d100_fleet_app1_fuse
+    volumeAttributes:
+      resourceGroup: rg
+      storageAccount: bpstracc
+      containerName: testblob
+      protocol: fuse
+      clientID: '<ID>'
+      #AzureStorageIdentityClientID: '<ID>'
+      #AzureStorageIdentityObjectID: '<ID>'
+      #AzureStorageIdentityResourceID : 'XXXXXXXXXX/userAssignedIdentities/XXXXXXX'
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-blob
+  namespace: test
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  volumeName: pv-blob
+  storageClassName: azureblob-fuse-fleet-premium
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: debugmcx
+  namespace: test
+  labels:
+    app: app1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app1
+  template:
+    metadata:
+      labels:
+        app: app1
+    spec:
+      containers:
+      - name: app1
+        image: mcr.microsoft.com/cbl-mariner/base/nginx:1
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+        resources:
+          limits:
+            memory: '500Mi'
+            cpu: '100m'
+        #ports:
+        #- containerPort: 80
+        command:
+          - '/bin/bash'
+          - '-c'
+          - 'set -euo pipefail; while true; do sleep 1; done'
+        #  - 'set -euo pipefail; while true; do cat /secrets/secret-app1 ; sleep 1; done'
+        volumeMounts:
+          - mountPath: /blob
+            name: data-volume2
+      serviceAccountName: 'sa-app1'
+      volumes:
+        - name: data-volume2
+          persistentVolumeClaim:
+            claimName: pvc-blob

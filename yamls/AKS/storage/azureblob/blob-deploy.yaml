@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blob-deploy2
+  labels:
+    app: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: app
+        image: mcr.microsoft.com/cbl-mariner/base/nginx:1
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+        resources:
+          limits:
+            memory: '500Mi'
+            cpu: '100m'
+        #ports:
+        #- containerPort: 80
+        command:
+          - '/bin/bash'
+          - '-c'
+          - 'set -euo pipefail; while true; do sleep 1; done'
+        #  - 'set -euo pipefail; while true; do cat /secrets/secret-app1 ; sleep 1; done'
+        volumeMounts:
+          - mountPath: /blob
+            name: data-volume
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: persistentvolumeclaim2

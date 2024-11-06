@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: timezone
+spec:
+  containers:
+  - name: timezone
+    image: mcr.microsoft.com/azure-cli
+    command: ["/bin/sh", "-ec", "sleep 1000"]
+    volumeMounts:
+    - name: timezone-config
+      mountPath: /etc/localtime
+  volumes:
+    - name: timezone-config
+      hostPath:
+        path: /usr/share/zoneinfo/Asia/Kolkata

@@ -1,0 +1,22 @@
+apiVersion: 2021-10-01
+type: Microsoft.ContainerInstance/containerGroups
+location: uksouth
+name: mycontainergroup1234
+properties:
+  containers:
+  - name: mycontainer1234
+    properties:
+      environmentVariables: []
+      image: fluent/fluentd
+      ports: []
+      resources:
+        requests:
+          cpu: 1.0
+          memoryInGB: 1.5
+  osType: Linux
+  restartPolicy: Always
+  diagnostics:
+    logAnalytics:
+      workspaceId: XXXXXXXXXXXXXXXXXXXXX
+      workspaceKey: XXXXXXXXXXXXXXXXXXX
+tags: null

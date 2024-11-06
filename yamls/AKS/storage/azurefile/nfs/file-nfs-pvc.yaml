@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lms-dev
+  namespace: dev
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1000Gi
+  storageClassName: azurefile-csi-nfs
+  volumeMode: Filesystem
+  volumeName: lms-dev

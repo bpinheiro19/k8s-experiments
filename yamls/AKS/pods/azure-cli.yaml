@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: Pod
-metadata:
-  name: azure-cli
-spec:
-  containers:
-    - name: azure-cli
-      image: mcr.microsoft.com/azure-cli   
-      command: ["/bin/sh", "-ec", "sleep 10000"]      

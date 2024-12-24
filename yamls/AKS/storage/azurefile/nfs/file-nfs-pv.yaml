@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: lms-dev
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 1000Gi
+  csi:
+    driver: file.csi.azure.com
+    volumeAttributes:
+      protocol: nfs
+      resourceGroup: aks-rg
+      shareName: nfstest
+      storageAccount: bpstorageaccnt1234
+    volumeHandle: aks-rg#bpstorageaccnt1234#nfstest
+  mountOptions:
+  - nconnect=4
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: azurefile-csi-nfs
+  volumeMode: Filesystem

@@ -1,0 +1,35 @@
+apiVersion: 2021-10-01
+type: Microsoft.ContainerInstance/containerGroups
+location: uksouth
+name: acitest12345
+identity: 
+  type: UserAssigned
+  userAssignedIdentities: {
+    '/subscriptions/XXXXXXXXXXXXXXX/resourceGroups/aci-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myumiacr': {},
+  }
+properties:
+  osType: Linux
+  imageRegistryCredentials:
+  - server: acrbp.azurecr.io
+    identity: '/subscriptions/XXXXXXXXXXXXX/resourceGroups/aci-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/myumiacr'
+  containers:
+  - name: netdeb
+    properties:
+      image: acrbp.azurecr.io/netdeb:0.0.1
+      resources:
+        requests:
+          cpu: 1
+          memoryInGb: 2
+      ports:
+      - port: 80
+  - name: netdeb2
+    properties:
+      image: acrbp.azurecr.io/netdeb:0.0.1
+      resources:
+        requests:
+          cpu: 1
+          memoryInGb: 2
+      ports:
+      - port: 443
+  restartPolicy: OnFailure
+      

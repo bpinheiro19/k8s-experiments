@@ -1,0 +1,9 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: byok
+provisioner: disk.csi.azure.com
+parameters:
+  skuname: StandardSSD_LRS
+  kind: managed
+  diskEncryptionSetID: "/subscriptions/XXXXXXXX/resourceGroups/XXXXXXX/providers/Microsoft.Compute/diskEncryptionSets/XXXXXXX"

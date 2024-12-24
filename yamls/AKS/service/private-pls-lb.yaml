@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice1
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true" # Use an internal LB with PLS
+    service.beta.kubernetes.io/azure-pls-create: "true"
+    service.beta.kubernetes.io/azure-pls-name: myserviceplss
+    service.beta.kubernetes.io/azure-pls-ip-configuration-subnet: pls-subnet
+    service.beta.kubernetes.io/azure-pls-ip-configuration-ip-address-count: "1"
+    service.beta.kubernetes.io/azure-pls-ip-configuration-ip-address: 10.0.241.10 # Must be available in pls-subnet
+    service.beta.kubernetes.io/azure-pls-visibility: "*"
+    service.beta.kubernetes.io/azure-pls-auto-approval: "XXXXXX"
+spec:
+  type: LoadBalancer
+  selector:
+    app: internal-app
+  ports:
+    - name: myappport1
+      protocol: TCP
+      port: 80
+      targetPort: 80

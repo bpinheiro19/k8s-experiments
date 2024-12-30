@@ -1,0 +1,19 @@
+apiVersion: projectcalico.org/v3
+kind: NetworkPolicy
+metadata:
+  name: deny-dev
+  namespace: dev
+spec:
+  selector: role == 'frontend'
+  types:
+    - Ingress
+    - Egress
+  ingress:
+    - action: Log
+      protocol: TCP
+      source:
+        selector: app == 'nginx'
+    - action: Deny
+      protocol: TCP
+      source:
+        selector: app == 'nginx'

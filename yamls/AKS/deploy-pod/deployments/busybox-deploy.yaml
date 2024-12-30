@@ -4,7 +4,7 @@ metadata:
   name: busybox
   namespace: test
 spec:
-  replicas: 10
+  replicas: 2
   selector:
     matchLabels:
       app: busybox

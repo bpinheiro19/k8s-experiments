@@ -11,7 +11,7 @@ subnetAddr=10.0.240.0/24
 
 #ACI
 aci="appcontainer"
-image="mcr.microsoft.com/azuredocs/aci-helloworld"
+image="mcr.microsoft.com/azure-cli" #"mcr.microsoft.com/azuredocs/aci-helloworld"
 
 aci() {
 
@@ -26,7 +26,7 @@ aci() {
             az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $subnet --subnet-prefixes $subnetAddr
             
             echo "Creating Azure Container Instance"
-            az container create --name $aci --resource-group $rg --image $image --vnet $vnet  --subnet $subnet
+            az container create --name $aci --resource-group $rg --image $image --vnet $vnet --subnet $subnet  --command-line "tail -f /dev/null"
             ;;
         delrg)
             echo "Deleting resource group"

@@ -143,6 +143,8 @@ alias tfpa='terraform plan -out main.tfplan && terraform apply main.tfplan'
 alias ghist='f(){ history | grep "$@" | less;  unset -f f; }; f'
 alias k9s="docker run --rm -it -v $KUBECONFIG:/root/.kube/config quay.io/derailed/k9s"
 
+alias tmux-init="bash $HOME/dev/tmux-init.sh"
+
 function fnode() {
   kubectl get nodes | tail -n +2 | awk '{print $1}'
 }

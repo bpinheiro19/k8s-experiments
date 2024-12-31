@@ -1,0 +1,18 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-egress
+  namespace: default
+spec:
+  endpointSelector: {}  # Matches all pods in the namespace
+  egress:
+    - toCIDR:
+        - '10.0.0.0/8'   # Allow egress to an IP range
+    - toFQDNs:
+        - matchPattern: 'XXXXXXXXXXXX'  # Allow egress to the specific FQDN
+        - matchPattern: 'XXXXXXXXXXXX'  # Allow egress to the proxy FQDN
+    - toEntities:
+        - cluster  # Optionally allow egress to cluster entities
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: coredns  # Allow egress to CoreDNS pods in the kube-system namespace

@@ -10,7 +10,7 @@ read -p "Enter the node number: " NODE_INDEX
 NODE=${nodes[NODE_INDEX]}
 
 IMAGE="mcr.microsoft.com/dotnet/runtime-deps:6.0"
-PROFILE="sysadmin"
+PROFILE="netadmin"
 ARGS="nsenter --target 1 --mount --uts --ipc --net --pid -- bash -l"
 
 kubectl debug node/$NODE -it  --image=$IMAGE --profile=$PROFILE -- $ARGS

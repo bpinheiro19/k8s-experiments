@@ -5,6 +5,7 @@ rg="aro-rg"
 location="uksouth"
 
 #ARO
+spName="aro-cluster-SP-$date"
 aro="aro$date"
 serviceCidr=10.0.248.0/22
 masterSku="standard_d8s_v3"
@@ -26,39 +27,32 @@ adminUser="azureuser"
 sshLocation="~/.ssh/id_rsa.pub"
 
 
+register(){
+    az provider register --namespace 'Microsoft.RedHatOpenShift' --wait
+    az provider register --namespace 'Microsoft.Compute' --wait
+    az provider register --namespace 'Microsoft.Storage' --wait
+    az provider register --namespace 'Microsoft.Authorization' --wait
+    az feature register --namespace Microsoft.RedHatOpenShift --name preview
+}
+
 aro() {
 
     for arg in "$@"; do
 
         case "$arg" in
         create)
-
-            az provider register --namespace 'Microsoft.RedHatOpenShift' --wait
-            az provider register --namespace 'Microsoft.Compute' --wait
-            az provider register --namespace 'Microsoft.Storage' --wait
-            az provider register --namespace 'Microsoft.Authorization' --wait
-
-            az feature register --namespace Microsoft.RedHatOpenShift --name preview
-
-            while true; do
-
-                read -p "Do you want to create a private cluster: (y/n)" yn
-
-                case $yn in
-                y | yes)
-                    createPrivateCluster
-                    break
-                    ;;
-                n | no)
-                    createPublicCluster
-                    break
-                    ;;
-                esac
-
-            done
+            register
+            createPublicCluster
+            break
             ;;
-
-        delete)
+            
+        private)
+            register
+            createPrivateCluster
+            break
+            ;;
+            
+        delrg)
             echo "Deleting resource group"
             az group delete -n $rg
             ;;
@@ -106,13 +100,17 @@ createPublicCluster() {
     masterSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $masterSubnet --query id -o tsv)
     workerSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $workerSubnet --query id -o tsv)
 
-    echo "Creating ARO cluster"
-    az aro create -g $rg -n $aro --vnet  $vnet --service-cidr $serviceCidr --master-subnet $masterSubnet --worker-subnet $workerSubnet # --master-vm-size $masterSku --worker-vm-size $workerSku --worker-count $nodeCount 
-    
+    AZ_SUB_ID=$(az account show --query id -o tsv) 
 
+    PASSWORD=$(az ad sp create-for-rbac --name $spName  --role contributor --scopes "/subscriptions/${AZ_SUB_ID}/resourceGroups/${rg}" --query "password" --output tsv)
+    appID=$(az ad sp list --display-name $spName --query "[].appId" --output tsv)
+
+    echo "Creating ARO cluster"
+    az aro create -g $rg -n $aro --vnet  $vnet --service-cidr $serviceCidr --master-subnet $masterSubnet --worker-subnet $workerSubnet --client-id $appID --client-secret $PASSWORD # --master-vm-size $masterSku --worker-vm-size $workerSku --worker-count $nodeCount 
+    
     az aro list-credentials -g $rg -n $aro
     az aro show -g $rg -n $aro --query "consoleProfile.url" -o tsv
-
+  
     apiServer=$(az aro show -g $rg -n $aro --query apiserverProfile.url -o tsv)
     kubeAdminPassword=$( az aro list-credentials -g $rg -n $aro --query kubeadminPassword -o tsv)
     echo "oc login $apiServer -u kubeadmin -p $kubeAdminPassword"

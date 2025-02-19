@@ -45,8 +45,9 @@ aks() {
             echo "## 06 - AKS cluster with kubenet, AAD and Azure RBAC          ##"
             echo "## 07 - AKS cluster with Defender and Policy                  ##"
             echo "## 08 - AKS cluster with Azure Monitoring                     ##"
-            echo "## 09 - AKS cluster with Node autoprovisioning                ##"         
-            echo "## 10 - Private AKS cluster                                   ##"
+            echo "## 09 - AKS cluster with App Routing                          ##"
+            echo "## 10 - AKS cluster with Node autoprovisioning                ##"           
+            echo "## 11 - Private AKS cluster                                   ##"
             echo "## 99 - Standalone VM                                         ##"
             echo "################################################################"
 
@@ -88,6 +89,10 @@ aks() {
                     break
                     ;;
                 9)
+                    createPublicAKSClusterAppRouting
+                    break
+                    ;;
+                10)
                     createPublicAKSClusterNAP
                     break
                     ;;
@@ -205,6 +210,11 @@ createPublicAKSClusterPolicyDefender() {
 createPublicAKSClusterMonitoring() {
     echo "Creating AKS cluster with monitoring and prometheus"
     createPublicAKSCluster "--enable-azure-monitor-metrics --enable-addons monitoring"
+}
+
+createPublicAKSClusterAppRouting() {
+    echo "Creating AKS cluster with app routing addon"
+    createPublicAKSCluster "--enable-app-routing"
 }
 
 createPublicAKSClusterNAP() {

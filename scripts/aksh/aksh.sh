@@ -6,15 +6,13 @@ location="swedencentral"
 
 #AKS
 aks="aks$date"
+aksVersion="1.31.1"
+networkPlugin="azure"
 serviceCidr=10.0.242.0/24
-podCIDR=172.16.0.0/16 
+podCIDR=172.16.0.0/16
 dnsIp=10.0.242.10
 sku="standard_d2as_v4" #"standard_b2s" Cheaper option
 nodeCount=1
-aksVersion="1.31.1"
-
-#AKS Networking
-
 
 #VNET
 vnet="vnet$date"
@@ -28,7 +26,6 @@ vmImage="Ubuntu2204"
 adminUser="azureuser"
 sshLocation="~/.ssh/id_rsa.pub"
 
-
 aks() {
 
     for arg in "$@"; do
@@ -39,20 +36,19 @@ aks() {
         case "$arg" in
 
         create)
-            echo "##########################################################"
-            echo "## 01 - AKS cluster with kubenet                        ##"
-            echo "## 02 - AKS cluster with azure cni                      ##"
-            echo "## 03 - Private AKS cluster with kubenet azure cni      ##"
-            echo "## 04 - Private AKS cluster with azure cni              ##"
-            echo "## 05 - AKS cluster with kubenet, AAD and Azure RBAC    ##"
-            echo "## 06 - AKS cluster with azure cni, defender and policy ##"
-            echo "## 07 - AKS cluster with monitoring                     ##"
-            echo "## 08 - AKS cluster with azure cni overlay              ##"
-            echo "## 09 - AKS cluster with azure cni overlay and calico   ##"
-            echo "## 10 - AKS cluster with Node autoprovisioning          ##"
-            echo "## 11 - AKS cluster with azure cni overlay and cilium  ##"
-            echo "## 99 - Standalone VM                                   ##"
-            echo "##########################################################"
+            echo "################################################################"
+            echo "## 01 - AKS cluster with Azure CNI                            ##"
+            echo "## 02 - AKS cluster with Kubenet                              ##"
+            echo "## 03 - AKS cluster with Azure CNI overlay and calico         ##"
+            echo "## 04 - AKS cluster with Azure CNI overlay, cilium and ACNS   ##"
+            echo "## 05 - AKS cluster with kubenet, AAD and K8s RBAC            ##"
+            echo "## 06 - AKS cluster with kubenet, AAD and Azure RBAC          ##"
+            echo "## 07 - AKS cluster with Defender and Policy                  ##"
+            echo "## 08 - AKS cluster with Azure Monitoring                     ##"
+            echo "## 09 - AKS cluster with Node autoprovisioning                ##"         
+            echo "## 10 - Private AKS cluster                                   ##"
+            echo "## 99 - Standalone VM                                         ##"
+            echo "################################################################"
 
             while true; do
 
@@ -60,50 +56,46 @@ aks() {
 
                 case $opt in
                 1)
-                    createPublicKubenetCluster
+                    createPublicAKSClusterCNI
                     break
                     ;;
                 2)
-                    createPublicCNICluster
+                    createPublicAKSClusterKubenet
                     break
                     ;;
-                3)  
-                    createPrivateKubenetCluster
+                3)
+                    createPublicAKSClusterCNIOverlayCalico
                     break
                     ;;
                 4)
-                    createPrivateCNICluster
+                    createPublicAKSClusterCNIOverlayCiliumACNS
                     break
                     ;;
                 5)
-                    createPublicAADCluster
+                    createPublicAKSClusterAADK8sRbac
                     break
                     ;;
                 6)
-                    createPublicCNIPolicyDefenderCluster
+                    createPublicAKSClusterAADAzureRbac
                     break
                     ;;
                 7)
-                    createPublicCNIMonitoringCluster
+                    createPublicAKSClusterPolicyDefender
                     break
                     ;;
                 8)
-                    createPublicCNIOverlay
+                    createPublicAKSClusterMonitoring
                     break
                     ;;
                 9)
-                    createPublicCNIOverlayCalico
+                    createPublicAKSClusterNAP
                     break
                     ;;
                 10)
-                    createPublicNAP
+                    createPrivateAKSCluster
                     break
-                    ;;
-                11)
-                    createPublicCNICiliumACNS
-                    break
-                    ;;
-                99)    
+                    ;;                 
+                99)
                     createVM
                     break
                     ;;
@@ -114,12 +106,12 @@ aks() {
 
         delete)
 
-            mapfile -t clusters < <( az aks list -g $rg -o tsv --query '[].[name]' )
+            mapfile -t clusters < <(az aks list -g $rg -o tsv --query '[].[name]')
 
             for i in "${!clusters[@]}"; do
                 printf "$i ${clusters[i]} \n"
             done
-        
+
             read -p "Enter the cluster number: " AKS_INDEX
             cluster=${clusters[AKS_INDEX]}
 
@@ -158,99 +150,102 @@ help() {
     echo ""
 }
 
-createRG(){
+###########################################
+############## Resource Group #############
+createRG() {
     echo "Creating the resource group"
     az group create -n $rg -l $location
 }
 
-createVNET(){
-    echo "Creating vnet and subnet"
+###########################################
+############# Virtual Network #############
+createVNET() {
+    echo "Creating virtual network and subnets"
     az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $subnet --subnet-prefixes $subnetAddr -l $location
 }
 
-createPublicCNICluster() {
+###########################################
+########### PUBLIC AKS CLUSTER ############
+createPublicAKSClusterCNI() {
     echo "Creating AKS cluster with azure cni"
-    createPublicCluster azure
+    createPublicAKSCluster
 }
 
-createPublicKubenetCluster(){
+createPublicAKSClusterKubenet() {
     echo "Creating AKS cluster with kubenet"
-    createPublicCluster kubenet "--pod-cidr $podCIDR"
+    networkPlugin="kubenet"
+    createPublicAKSCluster "--pod-cidr $podCIDR"
 }
 
-createPublicAADCluster(){
-    echo "Creating AKS cluster with AAD and Azure RBAC"
-    createPublicCluster azure "--enable-aad --enable-azure-rbac"
-}
-
-createPrivateKubenetCluster(){
-    echo "Creating AKS cluster with kubenet"
-    createPrivateCluster kubenet
-}
-
-createPrivateCNICluster(){
-    echo "Creating private AKS cluster with azure cni"
-    createPrivateCluster azure 
-}
-
-createPublicCNIPolicyDefenderCluster() {
-    echo "Creating AKS cluster with azure cni, defender and policy"
-    createPublicCluster azure "--enable-defender --enable-addons azure-policy"
-}
-
-createPublicCNIMonitoringCluster() {
-    echo "Creating AKS cluster with monitoring and prometheus"
-    createPublicCluster azure "--enable-azure-monitor-metrics --enable-addons monitoring"
-}
-
-createPublicCNIOverlay() {
-    echo "Creating AKS cluster with azure cni overlay"
-    createPublicCluster azure "--network-plugin-mode overlay --pod-cidr $podCIDR"
-}
-
-createPublicCNIOverlayCalico() {
+createPublicAKSClusterCNIOverlayCalico() {
     echo "Creating AKS cluster with azure cni overlay and calico"
-    createPublicCluster azure "--network-plugin-mode overlay --pod-cidr $podCIDR --network-policy calico"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --network-policy calico"
 }
 
-createPublicCNICiliumACNS() {
+createPublicAKSClusterCNIOverlayCiliumACNS() {
     echo "Creating AKS cluster with azure cni overlay and cilium"
-    createPublicCluster azure "--network-plugin-mode overlay --pod-cidr $podCIDR --network-dataplane cilium --network-policy cilium  --enable-acns"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --network-dataplane cilium --network-policy cilium  --enable-acns"
 }
 
+createPublicAKSClusterAADK8sRbac() {
+    echo "Creating AKS cluster with AAD and K8s RBAC"
+    createPublicAKSCluster "--enable-aad"
+}
 
-createPublicNAP() {
+createPublicAKSClusterAADAzureRbac() {
+    echo "Creating AKS cluster with AAD and Azure RBAC"
+    createPublicAKSCluster "--enable-aad --enable-azure-rbac"
+}
+
+createPublicAKSClusterPolicyDefender() {
+    echo "Creating AKS cluster with azure cni, defender and policy"
+    createPublicCluster "--enable-defender --enable-addons azure-policy"
+}
+
+createPublicAKSClusterMonitoring() {
+    echo "Creating AKS cluster with monitoring and prometheus"
+    createPublicAKSCluster "--enable-azure-monitor-metrics --enable-addons monitoring"
+}
+
+createPublicAKSClusterNAP() {
     echo "Creating AKS cluster with Node autoprovisioning"
-    createPublicCluster azure "--network-plugin-mode overlay --pod-cidr $podCIDR --network-dataplane cilium --node-provisioning-mode Auto"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --network-dataplane cilium --node-provisioning-mode Auto"
 }
 
-createPublicCluster(){
+createPublicAKSCluster() {
     createRG
     createVNET
 
     subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
-    
-    echo "Creating AKS cluster with kubenet"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $1 --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount $2
-    #--network-policy calico implementation missing
-    
+
+    echo "Creating public AKS cluster"
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount $1
+
     echo "az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
 }
 
+###########################################
+########### PRIVATE AKS CLUSTER ###########
 createPrivateCluster() {
+    
     createRG
     createVNET
 
     subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
 
     echo "Creating private AKS cluster"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $1 --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount --ssh-access disabled --enable-private-cluster
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount --ssh-access disabled --enable-private-cluster $1
 
-    createVM
+    echo "Creating Azure VM in the same vnet"
+    az vm create -g $rg -n $vm -l $location --image $vmImage --vnet-name $vnet --admin-username $adminUser --ssh-key-value $sshLocation
 }
 
-createVM(){
-    echo "Creating Azure VM in the same vnet"
+########### OTHERS ###########
+createVM() {
+    createRG
+    createVNET
+
+    echo "Creating Ubuntu VM"
     az vm create -g $rg -n $vm -l $location --image $vmImage --vnet-name $vnet --admin-username $adminUser --ssh-key-value $sshLocation
 }
 

@@ -46,8 +46,10 @@ aks() {
             echo "## 07 - AKS cluster with Defender and Policy                  ##"
             echo "## 08 - AKS cluster with Azure Monitoring                     ##"
             echo "## 09 - AKS cluster with App Routing                          ##"
-            echo "## 10 - AKS cluster with Node autoprovisioning                ##"           
-            echo "## 11 - Private AKS cluster                                   ##"
+            echo "## 10 - AKS cluster with Node autoprovisioning                ##"
+            echo "## 11 - AKS cluster with Azure Linux nodes                    ##"
+            echo "## 12 - AKS cluster with Windows node pool                    ##"            
+            echo "## 13 - Private AKS cluster                                   ##"
             echo "## 99 - Standalone VM                                         ##"
             echo "################################################################"
 
@@ -220,6 +222,18 @@ createPublicAKSClusterAppRouting() {
 createPublicAKSClusterNAP() {
     echo "Creating AKS cluster with Node autoprovisioning"
     createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --network-dataplane cilium --node-provisioning-mode Auto"
+}
+
+createPublicAKSClusterAzureLinux() {
+    echo "Creating AKS cluster with Azure Linux nodes"
+    createPublicAKSCluster "--os-sku AzureLinux"
+}
+
+createPublicAKSClusterAKSWindowsNodePool() {
+    echo "Creating AKS cluster with windows node pool"
+    createPublicAKSCluster
+    echo "Add new windows node pool"
+    az aks nodepool add --cluster-name $aks --name win -g $rg --os-type Windows --mode User --node-count 1 --node-vm-size Standard_D2s_v3
 }
 
 createPublicAKSCluster() {

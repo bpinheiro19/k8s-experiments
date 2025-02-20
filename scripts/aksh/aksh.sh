@@ -50,6 +50,7 @@ aks() {
             echo "## 11 - AKS cluster with Azure Linux nodes                    ##"
             echo "## 12 - AKS cluster with Windows node pool                    ##"            
             echo "## 13 - Private AKS cluster                                   ##"
+            echo "## 14 - Private AKS cluster with api vnet integration         ##"
             echo "## 99 - Standalone VM                                         ##"
             echo "################################################################"
 
@@ -98,10 +99,22 @@ aks() {
                     createPublicAKSClusterNAP
                     break
                     ;;
-                10)
+                11)
+                    createPublicAKSClusterAzureLinux
+                    break
+                    ;;
+                12)
+                    createPublicAKSClusterAKSWindowsNodePool
+                    break
+                    ;;
+                13)
                     createPrivateAKSCluster
                     break
-                    ;;                 
+                    ;;
+                14)
+                    createPrivateAKSClusterAPIIntegration
+                    break
+                    ;;                    
                 99)
                     createVM
                     break
@@ -250,8 +263,30 @@ createPublicAKSCluster() {
 
 ###########################################
 ########### PRIVATE AKS CLUSTER ###########
-createPrivateCluster() {
+createPrivateAKSClusterAPIIntegration() {
+    createRG
     
+    echo "Creating virtual network and subnets"
+    az network vnet create --name $vnet -g $rg --location $location --address-prefixes 172.19.0.0/16
+    az network vnet subnet create -g $rg --vnet-name $vnet --name "apiserver-subnet" --delegations Microsoft.ContainerService/managedClusters --address-prefixes 172.19.0.0/28
+    az network vnet subnet create -g $rg --vnet-name $vnet --name "cluster-subnet" --address-prefixes 172.19.1.0/24
+
+    apiSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n "apiserver-subnet" --query id -o tsv)
+    aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n "cluster-subnet" --query id -o tsv)
+
+    echo "Creating identity and role assignments"
+    identityId=$(az identity create -g $rg --name "aks-api-integration-identity" --location $location --query principalId -o tsv)
+    identityResourceId=$(az identity list -g aks-rg --output json --query '[].id' -o tsv)
+    sleep 10
+
+    az role assignment create --scope $apiSubnetId --role "Network Contributor" --assignee {$identityId}
+    az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $identityId
+
+    echo "Creating private AKS cluster with api vnet integration"
+    az aks create -g $rg -n $aks -l $location --network-plugin azure --enable-private-cluster --enable-apiserver-vnet-integration --vnet-subnet-id $aksSubnetId --apiserver-subnet-id $apiSubnetId --assign-identity $identityResourceId --generate-ssh-keys
+}
+
+createPrivateCluster() {
     createRG
     createVNET
 

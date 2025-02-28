@@ -26,6 +26,9 @@ vmImage="Ubuntu2204"
 adminUser="azureuser"
 sshLocation="~/.ssh/id_rsa.pub"
 
+#Others
+keyVaultName="akskeyvault$date"
+
 aks() {
 
     for arg in "$@"; do
@@ -45,12 +48,13 @@ aks() {
             echo "## 06 - AKS cluster with kubenet, AAD and Azure RBAC          ##"
             echo "## 07 - AKS cluster with Defender and Policy                  ##"
             echo "## 08 - AKS cluster with Azure Monitoring                     ##"
-            echo "## 09 - AKS cluster with App Routing                          ##"
-            echo "## 10 - AKS cluster with Node autoprovisioning                ##"
-            echo "## 11 - AKS cluster with Azure Linux nodes                    ##"
-            echo "## 12 - AKS cluster with Windows node pool                    ##"            
-            echo "## 13 - Private AKS cluster                                   ##"
-            echo "## 14 - Private AKS cluster with api vnet integration         ##"
+            echo "## 09 - AKS cluster with Azure Key Vault                      ##"
+            echo "## 10 - AKS cluster with App Routing                          ##"
+            echo "## 11 - AKS cluster with Node autoprovisioning                ##"
+            echo "## 12 - AKS cluster with Azure Linux nodes                    ##"
+            echo "## 13 - AKS cluster with Windows node pool                    ##"            
+            echo "## 14 - Private AKS cluster                                   ##"
+            echo "## 15 - Private AKS cluster with api vnet integration         ##"
             echo "## 99 - Standalone VM                                         ##"
             echo "################################################################"
 
@@ -92,26 +96,30 @@ aks() {
                     break
                     ;;
                 9)
+                    createPublicAKSClusterKeyVault
+                    break
+                    ;;
+                10)    
                     createPublicAKSClusterAppRouting
                     break
                     ;;
-                10)
+                11)
                     createPublicAKSClusterNAP
                     break
                     ;;
-                11)
+                12)
                     createPublicAKSClusterAzureLinux
                     break
                     ;;
-                12)
+                13)
                     createPublicAKSClusterAKSWindowsNodePool
                     break
                     ;;
-                13)
+                14)
                     createPrivateAKSCluster
                     break
                     ;;
-                14)
+                15)
                     createPrivateAKSClusterAPIIntegration
                     break
                     ;;                    
@@ -227,6 +235,16 @@ createPublicAKSClusterMonitoring() {
     createPublicAKSCluster "--enable-azure-monitor-metrics --enable-addons monitoring"
 }
 
+createPublicAKSClusterKeyVault() {
+    echo "Creating AKS cluster with azure key vault"
+    createPublicAKSCluster "--enable-addons azure-keyvault-secrets-provider"
+
+    echo "Creating a new Azure key vault"
+    az keyvault create --name $keyVaultName --resource-group $rg --location $location --enable-rbac-authorization
+
+    az aks connection create keyvault --connection keyvaultconnection --resource-group $rg --name $aks --target-resource-group $rg --vault $keyVaultName --enable-csi --client-type none
+}
+
 createPublicAKSClusterAppRouting() {
     echo "Creating AKS cluster with app routing addon"
     createPublicAKSCluster "--enable-app-routing"
@@ -278,7 +296,7 @@ createPrivateAKSClusterAPIIntegration() {
     identityId=$(az identity create -g $rg --name "aks-api-integration-identity" --location $location --query principalId -o tsv)
     identityResourceId=$(az identity list -g aks-rg --output json --query '[].id' -o tsv)
     sleep 10
-
+    
     az role assignment create --scope $apiSubnetId --role "Network Contributor" --assignee {$identityId}
     az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $identityId
 
@@ -290,6 +308,7 @@ createPrivateCluster() {
     createRG
     createVNET
 
+    echo "Creating private AKS cluster"
     subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
 
     echo "Creating private AKS cluster"

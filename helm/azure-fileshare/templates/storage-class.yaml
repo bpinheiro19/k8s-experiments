@@ -1,0 +1,13 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}-sc-azurefile
+allowVolumeExpansion: true
+mountOptions:
+- mfsymlinks
+- actimeo=30
+parameters:
+  skuName: Premium_LRS
+provisioner: file.csi.azure.com
+reclaimPolicy: Delete
+volumeBindingMode: Immediate

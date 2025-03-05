@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-azuredisk
+  labels:
+    app: azuredisk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azuredisk
+  template:
+    metadata:
+      labels:
+        app: azuredisk
+    spec:
+      containers:
+      - image: mcr.microsoft.com/oss/nginx/nginx:1.19.5
+        name: nginx-azurefile
+        command:
+          - "/bin/bash"
+          - "-c"
+          - set -euo pipefail; while true; do echo $(date) >> /mnt/azuredisk/outfile; sleep 1; done
+        volumeMounts:
+        - name: volume
+          mountPath: "/mnt/azuredisk"
+      volumes:
+        - name: volume
+          persistentVolumeClaim:
+            claimName: pvc-azuredisk

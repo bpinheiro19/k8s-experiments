@@ -6,7 +6,9 @@ aks="aks-agic"
 
 appGw="myApplicationGateway"
 ipName="myPublicIp"
+
 identityName="agic-identity"
+namespace="ingress"
 
 vnetName="agic-vnet"
 aksSubnet="aks-subnet"
@@ -59,7 +61,7 @@ createManagedIdentity() {
         --identity-name "$identityName" \
         --resource-group $rg \
         --issuer "$aks_oidc_issuer" \
-        --subject "system:serviceaccount:default:ingress-azure"
+        --subject "system:serviceaccount:$namespace:ingress-azure"
 
     resourceGroupId=$(az group show --name $rg --query id -otsv)
     nodeResourceGroup=$(az aks show -n $aks -g $rg -o tsv --query "nodeResourceGroup")
@@ -74,10 +76,62 @@ createManagedIdentity() {
 }
 
 installAGIC() {
-    az aks get-credentials --resource-group $rg --name $aks
+    az aks get-credentials --resource-group $rg --name $aks --overwrite-existing
 
-    helm install ingress-azure oci://mcr.microsoft.com/azure-application-gateway/charts/ingress-azure --namespace default --version 1.8.0 --set appgw.applicationGatewayID=$appgwId \
+    kubectl create ns $namespace
+
+    helm install ingress-azure oci://mcr.microsoft.com/azure-application-gateway/charts/ingress-azure --namespace $namespace --version 1.8.0 --set appgw.applicationGatewayID=$appgwId \
     --set armAuth.type=workloadIdentity --set armAuth.identityClientID=$identityClientId --set rbac.enabled=true
+}
+
+applyYamls(){
+    cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: aspnetapp
+  namespace: $namespace
+  labels:
+    app: aspnetapp
+spec:
+  containers:
+  - image: "mcr.microsoft.com/dotnet/samples:aspnetapp"
+    name: aspnetapp-image
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aspnetapp
+  namespace: $namespace
+spec:
+  selector:
+    app: aspnetapp
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aspnetapp
+  namespace: $namespace
+spec:
+  ingressClassName: azure-application-gateway
+  rules:
+  - http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: aspnetapp
+            port:
+              number: 80
+        pathType: Exact
+EOF
 }
 
 main() {
@@ -87,6 +141,7 @@ main() {
     createAKSCluster
     createManagedIdentity
     installAGIC
+    applyYamls
 }
 
 main

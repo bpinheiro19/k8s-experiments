@@ -17,7 +17,7 @@ nodeCount=1
 #VNET
 vnet="vnet$date"
 vnetAddr=10.0.0.0/16
-subnet="subnet$date"
+subnet="aks-subnet"
 subnetAddr=10.0.240.0/24
 
 #VM
@@ -28,6 +28,12 @@ sshLocation="~/.ssh/id_rsa.pub"
 
 #Others
 keyVaultName="akskeyvault$date"
+
+#AppGw
+appGw="myApplicationGateway"
+appGwSubnet="appgw-subnet"
+appGwSubnetAddr="10.0.1.0/24"
+publicIp="myPublicIp"
 
 aks() {
 
@@ -50,11 +56,12 @@ aks() {
             echo "## 08 - AKS cluster with Azure Monitoring                     ##"
             echo "## 09 - AKS cluster with Azure Key Vault                      ##"
             echo "## 10 - AKS cluster with App Routing                          ##"
-            echo "## 11 - AKS cluster with Node autoprovisioning                ##"
-            echo "## 12 - AKS cluster with Azure Linux nodes                    ##"
-            echo "## 13 - AKS cluster with Windows node pool                    ##"            
-            echo "## 14 - Private AKS cluster                                   ##"
-            echo "## 15 - Private AKS cluster with api vnet integration         ##"
+            echo "## 11 - AKS cluster with AGIC addon                           ##"
+            echo "## 12 - AKS cluster with Node autoprovisioning                ##"
+            echo "## 13 - AKS cluster with Azure Linux nodes                    ##"
+            echo "## 14 - AKS cluster with Windows node pool                    ##"            
+            echo "## 15 - Private AKS cluster                                   ##"
+            echo "## 16 - Private AKS cluster with api vnet integration         ##"
             echo "## 99 - Standalone VM                                         ##"
             echo "################################################################"
 
@@ -104,22 +111,26 @@ aks() {
                     break
                     ;;
                 11)
-                    createPublicAKSClusterNAP
+                    createPublicAKSClusterAGIC
                     break
                     ;;
                 12)
-                    createPublicAKSClusterAzureLinux
+                    createPublicAKSClusterNAP
                     break
                     ;;
                 13)
-                    createPublicAKSClusterAKSWindowsNodePool
+                    createPublicAKSClusterAzureLinux
                     break
                     ;;
                 14)
-                    createPrivateAKSCluster
+                    createPublicAKSClusterAKSWindowsNodePool
                     break
                     ;;
                 15)
+                    createPrivateAKSCluster
+                    break
+                    ;;
+                16)
                     createPrivateAKSClusterAPIIntegration
                     break
                     ;;                    
@@ -250,6 +261,31 @@ createPublicAKSClusterAppRouting() {
     createPublicAKSCluster "--enable-app-routing"
 }
 
+createPublicAKSClusterAGIC() {
+    echo "Creating AKS cluster with AGIC addon"
+    createRG
+    createVNET
+
+    echo "Creating Application Gateway subnet"
+    az network vnet subnet create -g $rg --vnet-name $vnet --name $appGwSubnet --address-prefixes $appGwSubnetAddr
+
+    echo "Creating public ip"
+    az network public-ip create --name $publicIp --resource-group $rg --allocation-method Static --sku Standard
+
+    echo "Creating Application Gateway"
+    az network application-gateway create --name $appGw --resource-group $rg --sku Standard_v2 --public-ip-address $publicIp --vnet-name $vnet --subnet $appGwSubnet --priority 100
+
+    appgwId=$(az network application-gateway show --name $appGw --resource-group $rg -o tsv --query "id")
+
+    echo "Creating public AKS cluster"
+    subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
+    
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --vnet-subnet-id $subnetId \
+    --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount --enable-addons ingress-appgw --appgw-id $appgwId
+
+    echo "az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
+}
+
 createPublicAKSClusterNAP() {
     echo "Creating AKS cluster with Node autoprovisioning"
     createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --network-dataplane cilium --node-provisioning-mode Auto"
@@ -304,7 +340,7 @@ createPrivateAKSClusterAPIIntegration() {
     az aks create -g $rg -n $aks -l $location --network-plugin azure --enable-private-cluster --enable-apiserver-vnet-integration --vnet-subnet-id $aksSubnetId --apiserver-subnet-id $apiSubnetId --assign-identity $identityResourceId --generate-ssh-keys
 }
 
-createPrivateCluster() {
+createPrivateAKSCluster() {
     createRG
     createVNET
 

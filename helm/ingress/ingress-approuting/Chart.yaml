@@ -1,0 +1,5 @@
+apiVersion: v2
+name: ingress-approuting
+description: Helm chart for aks cluster with app routing addon
+type: application
+version: 0.1.0

@@ -164,9 +164,6 @@ createPublicAKSCluster() {
 aks() {
 
     for arg in "$@"; do
-        echo "####################################################"
-        echo "##        Azure Kubernetes Service helper         ##"
-        echo "####################################################"
 
         case "$arg" in
 

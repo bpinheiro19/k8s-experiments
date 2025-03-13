@@ -26,7 +26,7 @@ vmImage="Ubuntu2204"
 adminUser="azureuser"
 sshLocation="~/.ssh/id_rsa.pub"
 
-main_menu(){
+mainMenu(){
     echo "################################################################"
     echo "##          Azure Containers Team helper                      ##"
     echo "################################################################"
@@ -40,7 +40,10 @@ main_menu(){
     echo "################################################################"
 }
 
-aks_menu_templates(){
+aksTemplatesMenu(){
+    echo "################################################################"
+    echo "##                Azure Kubernetes Service                    ##"
+    echo "################################################################"
     echo "################################################################"
     echo "## 01 - AKS cluster with Azure CNI                            ##"
     echo "## 02 - AKS cluster with Kubenet                              ##"
@@ -61,34 +64,60 @@ aks_menu_templates(){
     echo "################################################################"
 }
 
-rg() {
-    echo "rg"
+aksMenu(){
+    echo "################################################################"
+    echo "##                Azure Kubernetes Service                    ##"
+    echo "################################################################"
+    echo "################################################################"
+    echo "## 1 - AKS Templates                                          ##"
+    echo "## 2 - Custom AKS cluster                                     ##"
+    echo "################################################################"
 }
 
-aks() {
-    echo "####################################################"
-    echo "##           Azure Kubernetes Cluster             ##"
-    echo "####################################################"
+rgMenu(){
+    echo "################################################################"
+    echo "##                     Resource Group                         ##"
+    echo "################################################################"
+    echo "################################################################"
+    echo "## 1 - Create resource group                                  ##"
+    echo "## 2 - List resource groups                                   ##"
+    echo "## 3 - Delete resource group                                  ##"
+    echo "################################################################"
+}
 
-    echo "####################################################"
-    echo "##            AKS configuration                   ##"
-    echo "## 1 - Templates                                  ##"
-    echo "## 2 - Custom cluster                             ##"
-    echo "####################################################"
+rg() {
+    rgMenu
 
-    read -p "Option: " aksconfigargs
-    case "$aksconfigargs" in
+    read -p "Option: " rgargs
+    case "$rgargs" in
     1)
-        akstemplates
+        ./rg.sh create
         ;;
     2)
-        akscustom
+        ./rg.sh list
+        ;;
+    3)
+        ./rg.sh delete
         ;;
     esac
 }
 
-akstemplates(){
-    aks_menu_templates
+aks() {
+    aksMenu
+
+    read -p "Option: " aksconfigargs
+    case "$aksconfigargs" in
+    1)
+        aksTemplates
+        ;;
+    2)
+        aksCustom
+        ;;
+    esac
+}
+
+aksTemplates(){
+    aksTemplatesMenu
 
     read -p "Option: " opt
 
@@ -144,7 +173,7 @@ akstemplates(){
     esac
 }
 
-akscustom(){
+aksCustom(){
     echo "akscustom"
 }
 
@@ -166,7 +195,7 @@ others() {
 
 main() {
 
-    main_menu
+    mainMenu
 
     read -p "Option: " cargs
     case "$cargs" in

@@ -1,0 +1,4 @@
+ingressClassName: azure-application-gateway
+namespace: default
+rewrite: appgw.ingress.kubernetes.io/backend-path-prefix
+rewriteTarget: "/"

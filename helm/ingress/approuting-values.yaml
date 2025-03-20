@@ -1,0 +1,4 @@
+ingressClassName: webapprouting.kubernetes.azure.com
+namespace: default
+rewrite: nginx.ingress.kubernetes.io/rewrite-target
+rewriteTarget: /

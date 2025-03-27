@@ -60,8 +60,9 @@ aks() {
             echo "## 12 - AKS cluster with Node autoprovisioning                ##"
             echo "## 13 - AKS cluster with Azure Linux nodes                    ##"
             echo "## 14 - AKS cluster with Windows node pool                    ##"            
-            echo "## 15 - Private AKS cluster                                   ##"
-            echo "## 16 - Private AKS cluster with api vnet integration         ##"
+            echo "## 15 - AKS cluster with Zone Aligned node pools              ##"
+            echo "## 16 - Private AKS cluster                                   ##"
+            echo "## 17 - Private AKS cluster with api vnet integration         ##"
             echo "## 99 - Standalone VM                                         ##"
             echo "################################################################"
 
@@ -127,13 +128,17 @@ aks() {
                     break
                     ;;
                 15)
+                    createPublicAKSClusterZoneAligned
+                    break
+                    ;;   
+                16)
                     createPrivateAKSCluster
                     break
                     ;;
-                16)
+                17)
                     createPrivateAKSClusterAPIIntegration
                     break
-                    ;;                    
+                    ;;           
                 99)
                     createVM
                     break
@@ -301,6 +306,15 @@ createPublicAKSClusterAKSWindowsNodePool() {
     createPublicAKSCluster
     echo "Add new windows node pool"
     az aks nodepool add --cluster-name $aks --name win -g $rg --os-type Windows --mode User --node-count 1 --node-vm-size Standard_D2s_v3
+}
+
+createPublicAKSClusterZoneAligned() {
+    echo "Creating AKS cluster with Zone Aligned node pools"
+    createPublicAKSCluster
+    echo "Add user node pools"
+    az aks nodepool add -g $rg --cluster-name $aks --name userpool1  --mode User --node-count 1 --node-vm-size Standard_D2s_v3 --zones 1
+    az aks nodepool add -g $rg --cluster-name $aks --name userpool2  --mode User --node-count 1 --node-vm-size Standard_D2s_v3 --zones 2
+    az aks nodepool add -g $rg --cluster-name $aks --name userpool3  --mode User --node-count 1 --node-vm-size Standard_D2s_v3 --zones 3
 }
 
 createPublicAKSCluster() {

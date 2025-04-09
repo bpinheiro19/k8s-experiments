@@ -10,23 +10,35 @@ subnet="aci-subnet"
 subnetAddr=10.0.240.0/24
 
 #ACI
-aci="appcontainer"
-image="mcr.microsoft.com/azure-cli" #"mcr.microsoft.com/azuredocs/aci-helloworld"
+aci="appcontainer$RANDOM"
+dnsLabel="bp-aci-demo$RANDOM"
+cpu=1
+mem=1
 
 aci() {
 
     for arg in "$@"; do
 
         case "$arg" in
+
         create)
-            echo "Creating the resource group"
-            az group create -n $rg -l $location
-            
-            echo "Creating vnet and subnet"
-            az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $subnet --subnet-prefixes $subnetAddr
-            
-            echo "Creating Azure Container Instance"
-            az container create --name $aci --resource-group $rg --image $image --vnet $vnet --subnet $subnet  --command-line "tail -f /dev/null"
+            echo "################################################################"
+            echo "## 01 - Public Azure Container Instance                       ##"
+            echo "## 02 - Azure Container instance with vnet                    ##"
+            echo "################################################################"
+
+            read -p "Option: " opt
+
+                case $opt in
+                1)
+                    createPublicACI
+                    break
+                    ;;
+                2)
+                    createVnetACI
+                    break
+                    ;;
+                esac
             ;;
         delrg)
             echo "Deleting resource group"
@@ -44,19 +56,43 @@ aci() {
     done
 }
 
+##################################################
+################# Resource Group #################
+createRG() {
+    echo "Creating the resource group"
+    az group create -n $rg -l $location
+}
 
+##################################################
+################# Virtual Network ################
+createVNET() {
+    echo "Creating vnet and subnet"
+    az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $subnet --subnet-prefixes $subnetAddr
+}
 
+##################################################
+########### Azure Container Instances ############
+createPublicACI() {
+    createRG
+    createVNET
+    echo "Creating public Azure Container Instance"
+    az container create --name $aci --resource-group $rg --image mcr.microsoft.com/azuredocs/aci-helloworld --cpu $cpu --memory $mem --ip-address Public --dns-name-label $dnsLabel --os-type Linux --ports 80
+}
+
+createVnetACI() {
+    createRG
+    createVNET
+    echo "Creating Azure Container Instance with vnet"
+    az container create --name $aci --resource-group $rg --image mcr.microsoft.com/azure-cli --cpu $cpu --memory $mem --os-type Linux --vnet $vnet --subnet $subnet --command-line "tail -f /dev/null"
+}
 
 help() {
     echo 'Help:'
-    echo "Create an AKS cluster"
-    echo '$ aksh create'
-    echo ""
-    echo "Delete an AKS cluster"
-    echo "$ aksh delete"
+    echo "Create an Azure Container Instance"
+    echo '$ acih create'
     echo ""
     echo "Delete the resource group"
-    echo "$ aksh delrg"
+    echo "$ acih delrg"
     echo ""
 }
 
@@ -72,4 +108,3 @@ main() {
 }
 
 main $@
-

@@ -2,9 +2,9 @@ Bash script to ssh into AKS nodes
 
 ## Installation:
 ```bash
-wget https://github.com/bpinheiro19/k8s-experiments/blob/main/scripts/kssh/kssh.sh
-chmod +x ./kssh
-sudo mv ./kssh /usr/local/bin/kssh
+wget https://github.com/bpinheiro19/k8s-experiments/raw/main/scripts/kssh/kssh.sh
+chmod +x ./kssh.sh
+sudo mv ./kssh.sh /usr/local/bin/kssh
 ```
 
 ## Help:

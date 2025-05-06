@@ -2,9 +2,9 @@ Bash script to automate the creation of AKS clusters.
 
 ## Installation:
 ```bash
-wget https://github.com/bpinheiro19/k8s-experiments/blob/main/scripts/aksh/aksh.sh
-chmod +x ./aksh
-sudo mv ./aksh /usr/local/bin/aksh
+wget https://github.com/bpinheiro19/k8s-experiments/raw/main/scripts/aksh/aksh.sh
+chmod +x ./aksh.sh
+sudo mv ./aksh.sh /usr/local/bin/aksh
 ```
 
 ## Help:

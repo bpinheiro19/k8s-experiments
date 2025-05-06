@@ -2,9 +2,9 @@ Bash script to automate the creation of Azure RedHat Openshift clusters
 
 ## Installation:
 ```bash
-wget https://github.com/bpinheiro19/k8s-experiments/blob/main/scripts/aroh/aroh.sh
-chmod +x ./aroh
-sudo mv ./aroh /usr/local/bin/aroh
+wget https://github.com/bpinheiro19/k8s-experiments/raw/main/scripts/aroh/aroh.sh
+chmod +x ./aroh.sh
+sudo mv ./aroh.sh /usr/local/bin/aroh
 ```
 
 ## Help:

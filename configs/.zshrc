@@ -108,6 +108,7 @@ export PATH=$PATH:$HOME/.dotnet:$HOME/.dotnet/tools:$HOME/.local/bin
 
 export KUBECONFIG=$HOME/.kube/config
 source <(kubectl completion zsh)
+source <(helm completion zsh)
 
 alias cd_dev='cd $HOME/dev'
 
@@ -117,7 +118,7 @@ alias kaf='kubectl apply -f $1'
 alias kdf='kubectl delete -f $1'
 alias kdp='kubectl delete pod $1 --force --grace-period=0'
 alias kgp='kubectl get pods $1'
-alias kgpsystem='kubectl get pods -n kube-system'
+alias kgpsys='kubectl get pods -n kube-system'
 alias kexec='k exec -it $1 -- /bin/bash'
 alias kgetall='kubectl get nodes,pod,svc,ing -A -o wide'
 alias wkgetall='watch kubectl get nodes,pod,svc,ing -A -o wide'
@@ -138,6 +139,11 @@ alias tfp='terraform plan -out main.tfplan'
 alias tfa='terraform apply main.tfplan'
 alias tfd='terraform destroy --auto-approve'
 alias tfpa='terraform plan -out main.tfplan && terraform apply main.tfplan'
+
+## Helm
+alias hi="helm install $1 $2"
+alias hl="helm list --all"
+alias hu="helm uninstall $1"
 
 ## Others
 alias ghist='f(){ history | grep "$@" | less;  unset -f f; }; f'

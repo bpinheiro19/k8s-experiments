@@ -38,9 +38,9 @@ publicIp="myPublicIp"
 aks() {
 
     for arg in "$@"; do
-        echo "####################################################"
-        echo "##        Azure Kubernetes Service helper         ##"
-        echo "####################################################"
+        echo "################################################################"
+        echo "############    Azure Kubernetes Service helper     ############"
+        echo "################################################################"
 
         case "$arg" in
 
@@ -243,7 +243,7 @@ createPublicAKSClusterAADAzureRbac() {
 
 createPublicAKSClusterPolicyDefender() {
     echo "Creating AKS cluster with azure cni, defender and policy"
-    createPublicCluster "--enable-defender --enable-addons azure-policy"
+    createPublicAKSCluster "--enable-defender --enable-addons azure-policy"
 }
 
 createPublicAKSClusterMonitoring() {

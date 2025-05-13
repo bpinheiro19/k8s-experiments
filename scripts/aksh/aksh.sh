@@ -61,8 +61,9 @@ aks() {
             echo "## 13 - AKS cluster with Azure Linux nodes                    ##"
             echo "## 14 - AKS cluster with Windows node pool                    ##"            
             echo "## 15 - AKS cluster with Zone Aligned node pools              ##"
-            echo "## 16 - Private AKS cluster                                   ##"
-            echo "## 17 - Private AKS cluster with api vnet integration         ##"
+            echo "## 16 - AKS cluster with dapr extension                       ##"
+            echo "## 30 - Private AKS cluster                                   ##"
+            echo "## 31 - Private AKS cluster with api vnet integration         ##"
             echo "## 99 - Standalone VM                                         ##"
             echo "################################################################"
 
@@ -130,12 +131,16 @@ aks() {
                 15)
                     createPublicAKSClusterZoneAligned
                     break
-                    ;;   
+                    ;;
                 16)
+                    createPublicAKSClusterDapr
+                    break
+                    ;;
+                30)
                     createPrivateAKSCluster
                     break
                     ;;
-                17)
+                31)
                     createPrivateAKSClusterAPIIntegration
                     break
                     ;;           
@@ -310,11 +315,19 @@ createPublicAKSClusterAKSWindowsNodePool() {
 
 createPublicAKSClusterZoneAligned() {
     echo "Creating AKS cluster with Zone Aligned node pools"
-    createPublicAKSCluster
+    createPublicAKSCluster "--node-count 3 --zones 1 2 3"
     echo "Add user node pools"
-    az aks nodepool add -g $rg --cluster-name $aks --name userpool1  --mode User --node-count 1 --node-vm-size Standard_D2s_v3 --zones 1
-    az aks nodepool add -g $rg --cluster-name $aks --name userpool2  --mode User --node-count 1 --node-vm-size Standard_D2s_v3 --zones 2
-    az aks nodepool add -g $rg --cluster-name $aks --name userpool3  --mode User --node-count 1 --node-vm-size Standard_D2s_v3 --zones 3
+    az aks nodepool add -g $rg --cluster-name $aks --name userpool1  --mode User --node-count 1 --node-vm-size $sku --zones 1
+    az aks nodepool add -g $rg --cluster-name $aks --name userpool2  --mode User --node-count 1 --node-vm-size $sku --zones 2
+    az aks nodepool add -g $rg --cluster-name $aks --name userpool3  --mode User --node-count 1 --node-vm-size $sku --zones 3
+}
+
+createPublicAKSClusterDapr() {
+    echo "Creating AKS cluster with dapr extension"
+    createPublicAKSCluster "--node-count 3"
+    
+    echo "Installing dapr extension"
+    az k8s-extension create --cluster-type managedClusters --cluster-name $aks --resource-group $rg --name dapr --extension-type Microsoft.Dapr --auto-upgrade-minor-version true
 }
 
 createPublicAKSCluster() {

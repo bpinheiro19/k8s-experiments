@@ -62,6 +62,7 @@ aks() {
             echo "## 14 - AKS cluster with Windows node pool                    ##"            
             echo "## 15 - AKS cluster with Zone Aligned node pools              ##"
             echo "## 16 - AKS cluster with dapr extension                       ##"
+            echo "## 17 - AKS cluster with flux extension                       ##"
             echo "## 30 - Private AKS cluster                                   ##"
             echo "## 31 - Private AKS cluster with api vnet integration         ##"
             echo "## 99 - Standalone VM                                         ##"
@@ -134,6 +135,10 @@ aks() {
                     ;;
                 16)
                     createPublicAKSClusterDapr
+                    break
+                    ;;
+                17)
+                    createPublicAKSClusterFlux
                     break
                     ;;
                 30)
@@ -328,6 +333,14 @@ createPublicAKSClusterDapr() {
     
     echo "Installing dapr extension"
     az k8s-extension create --cluster-type managedClusters --cluster-name $aks --resource-group $rg --name dapr --extension-type Microsoft.Dapr --auto-upgrade-minor-version true
+}
+
+createPublicAKSClusterFlux() {
+    echo "Creating AKS cluster with flux extension"
+    createPublicAKSCluster
+    
+    echo "Installing dapr extension"
+    az k8s-configuration flux create -g $rg -c $aks -n cluster-config --namespace cluster-config -t managedClusters --scope cluster -u https://github.com/Azure/gitops-flux2-kustomize-helm-mt --branch main --kustomization name=infra path=./infrastructure prune=true --kustomization name=apps path=./apps/staging prune=true dependsOn=\["infra"\]
 }
 
 createPublicAKSCluster() {

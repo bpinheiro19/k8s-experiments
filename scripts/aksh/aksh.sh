@@ -6,12 +6,12 @@ location="swedencentral"
 
 #AKS
 aks="aks$date"
-aksVersion="1.31.1"
+aksVersion="1.31.7"
 networkPlugin="azure"
 serviceCidr=10.0.242.0/24
 podCIDR=172.16.0.0/16
 dnsIp=10.0.242.10
-sku="standard_d2as_v4" #"standard_b2s" Cheaper option
+sku="Standard_D2ps_v6"
 nodeCount=1
 
 #VNET
@@ -63,6 +63,7 @@ aks() {
             echo "## 15 - AKS cluster with Zone Aligned node pools              ##"
             echo "## 16 - AKS cluster with dapr extension                       ##"
             echo "## 17 - AKS cluster with flux extension                       ##"
+            echo "## 18 - AKS cluster with keda addon                           ##"
             echo "## 30 - Private AKS cluster                                   ##"
             echo "## 31 - Private AKS cluster with api vnet integration         ##"
             echo "## 99 - Standalone VM                                         ##"
@@ -139,6 +140,10 @@ aks() {
                     ;;
                 17)
                     createPublicAKSClusterFlux
+                    break
+                    ;;
+                18)
+                    createPublicAKSClusterKeda
                     break
                     ;;
                 30)
@@ -339,8 +344,13 @@ createPublicAKSClusterFlux() {
     echo "Creating AKS cluster with flux extension"
     createPublicAKSCluster
     
-    echo "Installing dapr extension"
+    echo "Installing flux extension"
     az k8s-configuration flux create -g $rg -c $aks -n cluster-config --namespace cluster-config -t managedClusters --scope cluster -u https://github.com/Azure/gitops-flux2-kustomize-helm-mt --branch main --kustomization name=infra path=./infrastructure prune=true --kustomization name=apps path=./apps/staging prune=true dependsOn=\["infra"\]
+}
+
+createPublicAKSClusterKeda() {
+    echo "Creating AKS cluster with keda addon"
+    createPublicAKSCluster "--enable-keda"
 }
 
 createPublicAKSCluster() {

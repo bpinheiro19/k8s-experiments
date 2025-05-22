@@ -8,6 +8,8 @@ location="swedencentral"
 aks="aks$date"
 aksVersion="1.31.7"
 networkPlugin="azure"
+networkPolicy="none"
+networkDataplane="azure"
 serviceCidr=10.0.242.0/24
 podCIDR=172.16.0.0/16
 dnsIp=10.0.242.10
@@ -238,12 +240,15 @@ createPublicAKSClusterKubenet() {
 
 createPublicAKSClusterCNIOverlayCalico() {
     echo "Creating AKS cluster with azure cni overlay and calico"
-    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --network-policy calico"
+    networkPolicy="calico"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR"
 }
 
 createPublicAKSClusterCNIOverlayCiliumACNS() {
+    networkPolicy="cilium"
+    networkDataplane="cilium"
     echo "Creating AKS cluster with azure cni overlay and cilium"
-    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --network-dataplane cilium --network-policy cilium  --enable-acns"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --enable-acns"
 }
 
 createPublicAKSClusterAADK8sRbac() {
@@ -308,7 +313,8 @@ createPublicAKSClusterAGIC() {
 
 createPublicAKSClusterNAP() {
     echo "Creating AKS cluster with Node autoprovisioning"
-    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --network-dataplane cilium --node-provisioning-mode Auto"
+    networkDataplane="cilium"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --node-provisioning-mode Auto"
 }
 
 createPublicAKSClusterAzureLinux() {
@@ -326,6 +332,7 @@ createPublicAKSClusterAKSWindowsNodePool() {
 createPublicAKSClusterZoneAligned() {
     echo "Creating AKS cluster with Zone Aligned node pools"
     createPublicAKSCluster "--node-count 3 --zones 1 2 3"
+
     echo "Add user node pools"
     az aks nodepool add -g $rg --cluster-name $aks --name userpool1  --mode User --node-count 1 --node-vm-size $sku --zones 1
     az aks nodepool add -g $rg --cluster-name $aks --name userpool2  --mode User --node-count 1 --node-vm-size $sku --zones 2
@@ -360,7 +367,7 @@ createPublicAKSCluster() {
     subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
 
     echo "Creating public AKS cluster"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount $1
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount $1
 
     echo "az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
 }
@@ -387,7 +394,7 @@ createPrivateAKSClusterAPIIntegration() {
     az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $identityId
 
     echo "Creating private AKS cluster with api vnet integration"
-    az aks create -g $rg -n $aks -l $location --network-plugin azure --enable-private-cluster --enable-apiserver-vnet-integration --vnet-subnet-id $aksSubnetId --apiserver-subnet-id $apiSubnetId --assign-identity $identityResourceId --generate-ssh-keys
+    az aks create -g $rg -n $aks -l $location --network-plugin $networkPlugin --enable-private-cluster --enable-apiserver-vnet-integration --vnet-subnet-id $aksSubnetId --apiserver-subnet-id $apiSubnetId --assign-identity $identityResourceId --generate-ssh-keys
 }
 
 createPrivateAKSCluster() {

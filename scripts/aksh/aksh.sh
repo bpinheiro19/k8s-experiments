@@ -10,17 +10,19 @@ aksVersion="1.31.7"
 networkPlugin="azure"
 networkPolicy="none"
 networkDataplane="azure"
-serviceCidr=10.0.242.0/24
+serviceCidr=10.0.241.0/24
 podCIDR=172.16.0.0/16
-dnsIp=10.0.242.10
+dnsIp=10.0.241.10
 sku="Standard_D2ps_v6"
 nodeCount=1
 
 #VNET
 vnet="vnet$date"
 vnetAddr=10.0.0.0/16
-subnet="aks-subnet"
-subnetAddr=10.0.240.0/24
+aksSubnet="aks-subnet"
+apiSubnet="apiserver-subnet"
+aksSubnetAddr=10.0.240.0/24
+apiSubnetAddr=10.0.242.0/24
 
 #VM
 vm="aksVM"
@@ -52,8 +54,8 @@ aks() {
             echo "## 02 - AKS cluster with Kubenet                              ##"
             echo "## 03 - AKS cluster with Azure CNI overlay and calico         ##"
             echo "## 04 - AKS cluster with Azure CNI overlay, cilium and ACNS   ##"
-            echo "## 05 - AKS cluster with kubenet, AAD and K8s RBAC            ##"
-            echo "## 06 - AKS cluster with kubenet, AAD and Azure RBAC          ##"
+            echo "## 05 - AKS cluster with Kubenet, AAD and K8s RBAC            ##"
+            echo "## 06 - AKS cluster with Kubenet, AAD and Azure RBAC          ##"
             echo "## 07 - AKS cluster with Defender and Policy                  ##"
             echo "## 08 - AKS cluster with Azure Monitoring                     ##"
             echo "## 09 - AKS cluster with Azure Key Vault                      ##"
@@ -63,9 +65,9 @@ aks() {
             echo "## 13 - AKS cluster with Azure Linux nodes                    ##"
             echo "## 14 - AKS cluster with Windows node pool                    ##"            
             echo "## 15 - AKS cluster with Zone Aligned node pools              ##"
-            echo "## 16 - AKS cluster with dapr extension                       ##"
-            echo "## 17 - AKS cluster with flux extension                       ##"
-            echo "## 18 - AKS cluster with keda addon                           ##"
+            echo "## 16 - AKS cluster with Dapr extension                       ##"
+            echo "## 17 - AKS cluster with Flux extension                       ##"
+            echo "## 18 - AKS cluster with Keda addon                           ##"
             echo "## 30 - Private AKS cluster                                   ##"
             echo "## 31 - Private AKS cluster with api vnet integration         ##"
             echo "## 99 - Standalone VM                                         ##"
@@ -157,7 +159,7 @@ aks() {
                     break
                     ;;           
                 99)
-                    createVM
+                    createStandaloneVM
                     break
                     ;;
                 esac
@@ -178,8 +180,6 @@ aks() {
 
             echo "Deleting the AKS cluster - $cluster"
             az aks delete --name $cluster --resource-group $rg
-
-            break
             ;;
 
         delrg)
@@ -222,7 +222,7 @@ createRG() {
 ############# Virtual Network #############
 createVNET() {
     echo "Creating virtual network and subnets"
-    az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $subnet --subnet-prefixes $subnetAddr -l $location
+    az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $aksSubnet --subnet-prefixes $aksSubnetAddr -l $location
 }
 
 ###########################################
@@ -286,11 +286,7 @@ createPublicAKSClusterAppRouting() {
     createPublicAKSCluster "--enable-app-routing"
 }
 
-createPublicAKSClusterAGIC() {
-    echo "Creating AKS cluster with AGIC addon"
-    createRG
-    createVNET
-
+createAppGw(){
     echo "Creating Application Gateway subnet"
     az network vnet subnet create -g $rg --vnet-name $vnet --name $appGwSubnet --address-prefixes $appGwSubnetAddr
 
@@ -299,16 +295,18 @@ createPublicAKSClusterAGIC() {
 
     echo "Creating Application Gateway"
     az network application-gateway create --name $appGw --resource-group $rg --sku Standard_v2 --public-ip-address $publicIp --vnet-name $vnet --subnet $appGwSubnet --priority 100
+}
+
+createPublicAKSClusterAGIC() {
+    echo "Creating AKS cluster with AGIC addon"
+    createRG
+    createVNET
+
+    createAppGw
 
     appgwId=$(az network application-gateway show --name $appGw --resource-group $rg -o tsv --query "id")
-
-    echo "Creating public AKS cluster"
-    subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
     
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --vnet-subnet-id $subnetId \
-    --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount --enable-addons ingress-appgw --appgw-id $appgwId
-
-    echo "az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
+    createAKSCluster "--enable-addons ingress-appgw --appgw-id $appgwId"
 }
 
 createPublicAKSClusterNAP() {
@@ -340,50 +338,53 @@ createPublicAKSClusterZoneAligned() {
 }
 
 createPublicAKSClusterDapr() {
-    echo "Creating AKS cluster with dapr extension"
+    echo "Creating AKS cluster with Dapr extension"
     createPublicAKSCluster "--node-count 3"
     
-    echo "Installing dapr extension"
+    echo "Installing Dapr extension"
     az k8s-extension create --cluster-type managedClusters --cluster-name $aks --resource-group $rg --name dapr --extension-type Microsoft.Dapr --auto-upgrade-minor-version true
 }
 
 createPublicAKSClusterFlux() {
-    echo "Creating AKS cluster with flux extension"
+    echo "Creating AKS cluster with Flux extension"
     createPublicAKSCluster
     
-    echo "Installing flux extension"
+    echo "Installing Flux extension"
     az k8s-configuration flux create -g $rg -c $aks -n cluster-config --namespace cluster-config -t managedClusters --scope cluster -u https://github.com/Azure/gitops-flux2-kustomize-helm-mt --branch main --kustomization name=infra path=./infrastructure prune=true --kustomization name=apps path=./apps/staging prune=true dependsOn=\["infra"\]
 }
 
 createPublicAKSClusterKeda() {
-    echo "Creating AKS cluster with keda addon"
+    echo "Creating AKS cluster with Keda addon"
     createPublicAKSCluster "--enable-keda"
 }
 
+createAKSCluster(){
+    aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
+    echo "Creating AKS cluster"
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount $1
+
+    echo "az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
+}
+
 createPublicAKSCluster() {
+
     createRG
     createVNET
 
-    subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
-
-    echo "Creating public AKS cluster"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount $1
-
-    echo "az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
+    createAKSCluster $1
 }
 
 ###########################################
 ########### PRIVATE AKS CLUSTER ###########
 createPrivateAKSClusterAPIIntegration() {
-    createRG
-    
-    echo "Creating virtual network and subnets"
-    az network vnet create --name $vnet -g $rg --location $location --address-prefixes 172.19.0.0/16
-    az network vnet subnet create -g $rg --vnet-name $vnet --name "apiserver-subnet" --delegations Microsoft.ContainerService/managedClusters --address-prefixes 172.19.0.0/28
-    az network vnet subnet create -g $rg --vnet-name $vnet --name "cluster-subnet" --address-prefixes 172.19.1.0/24
+    echo "Creating private AKS cluster with API vnet integration"
 
-    apiSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n "apiserver-subnet" --query id -o tsv)
-    aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n "cluster-subnet" --query id -o tsv)
+    createRG
+    createVNET
+    az network vnet subnet create -g $rg --vnet-name $vnet --name "apiserver-subnet" --delegations Microsoft.ContainerService/managedClusters --address-prefixes $apiSubnetAddr
+
+    apiSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $apiSubnet --query id -o tsv)
+    aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
 
     echo "Creating identity and role assignments"
     identityId=$(az identity create -g $rg --name "aks-api-integration-identity" --location $location --query principalId -o tsv)
@@ -391,32 +392,35 @@ createPrivateAKSClusterAPIIntegration() {
     sleep 10
     
     az role assignment create --scope $apiSubnetId --role "Network Contributor" --assignee {$identityId}
-    az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $identityId
+    az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $identityId    
 
-    echo "Creating private AKS cluster with api vnet integration"
-    az aks create -g $rg -n $aks -l $location --network-plugin $networkPlugin --enable-private-cluster --enable-apiserver-vnet-integration --vnet-subnet-id $aksSubnetId --apiserver-subnet-id $apiSubnetId --assign-identity $identityResourceId --generate-ssh-keys
+    createAKSCluster "--ssh-access disabled --enable-private-cluster --disable-public-fqdn --enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId --assign-identity $identityResourceId "
+    
+    createVM
 }
 
+
 createPrivateAKSCluster() {
+    echo "Creating private AKS cluster"
+
     createRG
     createVNET
 
-    echo "Creating private AKS cluster"
-    subnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $subnet --query id -o tsv)
+    createAKSCluster "--ssh-access disabled --enable-private-cluster --disable-public-fqdn "
 
-    echo "Creating private AKS cluster"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --vnet-subnet-id $subnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount --ssh-access disabled --enable-private-cluster $1
-
-    echo "Creating Azure VM in the same vnet"
-    az vm create -g $rg -n $vm -l $location --image $vmImage --vnet-name $vnet --admin-username $adminUser --ssh-key-value $sshLocation
+    createVM
 }
 
 ########### OTHERS ###########
-createVM() {
+createStandaloneVM() {
     createRG
     createVNET
 
-    echo "Creating Ubuntu VM"
+    createVM
+}
+
+createVM(){
+    echo "Creating Virtual Machine"
     az vm create -g $rg -n $vm -l $location --image $vmImage --vnet-name $vnet --admin-username $adminUser --ssh-key-value $sshLocation
 }
 

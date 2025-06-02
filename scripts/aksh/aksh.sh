@@ -1,8 +1,10 @@
 #!/bin/bash
 
+## VARS ##
 date="$(date +%s)"
 rg="aks-rg"
 location="swedencentral"
+extraArgs=""
 
 #AKS
 aks="aks$date"
@@ -30,15 +32,16 @@ vmImage="Ubuntu2204"
 adminUser="azureuser"
 sshLocation="~/.ssh/id_rsa.pub"
 
-#Others
-keyVaultName="akskeyvault$date"
-
 #AppGw
 appGw="myApplicationGateway"
 appGwSubnet="appgw-subnet"
 appGwSubnetAddr="10.0.1.0/24"
 publicIp="myPublicIp"
 
+#Others
+keyVaultName="akskeyvault$date"
+
+## FUNCTIONS ##
 aks_templates() {
 
     header
@@ -160,8 +163,42 @@ aks_templates() {
 }
 
 aks_custom() {
-    echo "AKS custom"
+    
+    networkPlugin
+    
+    createPublicAKSCluster "$extraArgs"
 }
+
+networkPlugin() {
+    header
+    while true; do
+        echo "##############           Network Plugin        #################"
+        echo "## 01 - Azure Overlay                                         ##"
+        echo "## 02 - Azure CNI NodeSubnet                                  ##"
+        echo "## 03 - Kubenet                                               ##"
+        echo "################################################################"
+
+        read -p "Option: " networkplugin
+
+        case $networkplugin in
+        1)
+            networkPlugin="azure"
+            networkPluginMode="overlay"
+            extraArgs+="--network-plugin-mode $networkPluginMode --pod-cidr $podCIDR "
+            break
+            ;;
+        2)
+            networkPlugin="azure"
+            break
+            ;;
+        3)
+            networkPlugin="kubenet"
+            break
+            ;;
+        esac
+    done
+}
+
 
 ###########################################
 ############## Resource Group #############

@@ -42,7 +42,7 @@ publicIp="myPublicIp"
 keyVaultName="akskeyvault$date"
 
 ## FUNCTIONS ##
-aks_templates() {
+aksTemplates() {
 
     header
     echo "################################################################"
@@ -162,14 +162,37 @@ aks_templates() {
     done
 }
 
-aks_custom() {
-    
-    networkPlugin
-    
+aksCustom() {
+
+    aksPublicPrivate
+    aksNetworkPlugin
+    aksNetworkPolicy
+
     createPublicAKSCluster "$extraArgs"
 }
 
-networkPlugin() {
+aksPublicPrivate() {
+    while true; do
+        echo "##############           AKS Cluster           #################"
+        echo "## 01 - Public AKS cluster                                    ##"
+        echo "## 02 - Private AKS cluster                                   ##"
+        echo "################################################################"
+
+        read -p "Option: " publicprivate
+
+        case $publicprivate in
+        1)
+            break
+            ;;
+        2)
+            extraArgs+="--ssh-access disabled --enable-private-cluster --disable-public-fqdn "
+            break
+            ;;
+        esac
+    done
+}
+
+aksNetworkPlugin() {
     header
     while true; do
         echo "##############           Network Plugin        #################"
@@ -199,6 +222,41 @@ networkPlugin() {
     done
 }
 
+aksNetworkPolicy() {
+    header
+
+    while true; do
+        echo "##############           Network Policy        #################"
+        echo "## 00 - None                                                  ##"
+        echo "## 01 - Azure                                                 ##"
+        echo "## 02 - Calico                                                ##"
+        echo "## 03 - Cilium                                                ##"
+        echo "################################################################"
+
+        read -p "Option: " networkpolicy
+
+        case $networkpolicy in
+        0)
+            networkPolicy="none"
+            break
+            ;;
+        1)
+            networkPolicy="azure"
+            break
+            ;;
+        2)
+            networkPolicy="calico"
+            break
+            ;;
+        3)
+            networkPolicy="cilium"
+            extraArgs+="--network-dataplane cilium "
+            break
+            ;;
+        esac
+    done
+
+}
 
 ###########################################
 ############## Resource Group #############
@@ -430,11 +488,11 @@ main() {
 
         case $opt in
         1)
-            aks_templates
+            aksTemplates
             break
             ;;
         2)
-            aks_custom
+            aksCustom
             break
             ;;
         3)

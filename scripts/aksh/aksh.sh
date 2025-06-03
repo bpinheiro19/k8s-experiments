@@ -165,6 +165,7 @@ aksTemplates() {
 aksCustom() {
 
     aksPublicPrivate
+    aksVersion
     aksNetworkPlugin
     aksNetworkPolicy
 
@@ -173,7 +174,7 @@ aksCustom() {
 
 aksPublicPrivate() {
     while true; do
-        echo "##############           AKS Cluster           #################"
+        echo "##############         AKS Cluster Type        #################"
         echo "## 01 - Public AKS cluster                                    ##"
         echo "## 02 - Private AKS cluster                                   ##"
         echo "################################################################"
@@ -191,6 +192,22 @@ aksPublicPrivate() {
         esac
     done
 }
+
+aksVersion() {
+    echo "Available AKS versions:"
+    
+    mapfile -t versions < <( az aks get-versions -l swedencentral --only-show-errors -o table | tail -n +3 | awk '{print $1}')
+
+    echo "##############       AKS Cluster Version       #################"
+    for i in "${!versions[@]}"; do
+        printf "## $i - ${versions[i]} \n"
+    done
+    echo "################################################################"
+
+    read -p "Enter the AKS version: " INDEX
+    aksVersion=${versions[INDEX]}
+}
+
 
 aksNetworkPlugin() {
     header

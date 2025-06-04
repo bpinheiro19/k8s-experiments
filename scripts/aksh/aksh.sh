@@ -168,6 +168,7 @@ aksCustom() {
     aksVersion
     aksNetworkPlugin
     aksNetworkPolicy
+    aksAddons
 
     createPublicAKSCluster "$extraArgs"
 }
@@ -208,6 +209,54 @@ aksVersion() {
     aksVersion=${versions[INDEX]}
 }
 
+aksAddons() {
+
+    while true; do
+        echo "##############             Addons              #################"
+        echo "## 00 - None                                                  ##"
+        echo "## 01 - Azure Key Vault                                       ##"
+        echo "## 02 - Azure Monitor                                         ##"
+        echo "## 03 - Azure Defender and Policy                             ##"
+        echo "## 04 - App Routing                                           ##"
+        echo "## 05 - AGIC                                                  ##"
+        echo "## 06 - KEDA                                                  ##"
+        echo "################################################################"
+
+        read -p "Option: " addon
+
+        case $addon in
+
+        0)
+            echo "No addons selected"
+            break
+            ;;
+        1)
+            extraArgs+="-a azure-keyvault-secrets-provider "
+            break
+            ;;
+        2)
+            extraArgs+="--enable-azure-monitor-metrics --enable-addons monitoring "
+            break
+            ;;
+        3)
+            extraArgs+="--enable-defender --enable-addons azure-policy "
+            break
+            ;;
+        4)
+            extraArgs+="--enable-app-routing "
+            break
+            ;;
+        5)
+            extraArgs+="-a ingress-appgw --appgw-name $appGw --appgw-subnet-cidr $appGwSubnetAddr "
+            break
+            ;;
+        6)
+            extraArgs+="--enable-keda "
+            break
+            ;;
+        esac
+    done
+}
 
 aksNetworkPlugin() {
     header

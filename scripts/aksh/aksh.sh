@@ -1,6 +1,7 @@
 #!/bin/bash
 
-## VARS ##
+############################################
+################ Variables #################
 date="$(date +%s)"
 rg="aks-rg"
 location="swedencentral"
@@ -209,55 +210,6 @@ aksVersion() {
     aksVersion=${versions[INDEX]}
 }
 
-aksAddons() {
-
-    while true; do
-        echo "##############             Addons              #################"
-        echo "## 00 - None                                                  ##"
-        echo "## 01 - Azure Key Vault                                       ##"
-        echo "## 02 - Azure Monitor                                         ##"
-        echo "## 03 - Azure Defender and Policy                             ##"
-        echo "## 04 - App Routing                                           ##"
-        echo "## 05 - AGIC                                                  ##"
-        echo "## 06 - KEDA                                                  ##"
-        echo "################################################################"
-
-        read -p "Option: " addon
-
-        case $addon in
-
-        0)
-            echo "No addons selected"
-            break
-            ;;
-        1)
-            extraArgs+="-a azure-keyvault-secrets-provider "
-            break
-            ;;
-        2)
-            extraArgs+="--enable-azure-monitor-metrics --enable-addons monitoring "
-            break
-            ;;
-        3)
-            extraArgs+="--enable-defender --enable-addons azure-policy "
-            break
-            ;;
-        4)
-            extraArgs+="--enable-app-routing "
-            break
-            ;;
-        5)
-            extraArgs+="-a ingress-appgw --appgw-name $appGw --appgw-subnet-cidr $appGwSubnetAddr "
-            break
-            ;;
-        6)
-            extraArgs+="--enable-keda "
-            break
-            ;;
-        esac
-    done
-}
-
 aksNetworkPlugin() {
     header
     while true; do
@@ -324,6 +276,55 @@ aksNetworkPolicy() {
 
 }
 
+aksAddons() {
+
+    while true; do
+        echo "##############             Addons              #################"
+        echo "## 00 - None                                                  ##"
+        echo "## 01 - Azure Key Vault                                       ##"
+        echo "## 02 - Azure Monitor                                         ##"
+        echo "## 03 - Azure Defender and Policy                             ##"
+        echo "## 04 - App Routing                                           ##"
+        echo "## 05 - AGIC                                                  ##"
+        echo "## 06 - KEDA                                                  ##"
+        echo "################################################################"
+
+        read -p "Option: " addon
+
+        case $addon in
+
+        0)
+            echo "No addons selected"
+            break
+            ;;
+        1)
+            extraArgs+="-a azure-keyvault-secrets-provider "
+            break
+            ;;
+        2)
+            extraArgs+="--enable-azure-monitor-metrics --enable-addons monitoring "
+            break
+            ;;
+        3)
+            extraArgs+="--enable-defender --enable-addons azure-policy "
+            break
+            ;;
+        4)
+            extraArgs+="--enable-app-routing "
+            break
+            ;;
+        5)
+            extraArgs+="-a ingress-appgw --appgw-name $appGw --appgw-subnet-cidr $appGwSubnetAddr "
+            break
+            ;;
+        6)
+            extraArgs+="--enable-keda "
+            break
+            ;;
+        esac
+    done
+}
+
 ###########################################
 ############## Resource Group #############
 createRG() {
@@ -339,7 +340,7 @@ createVNET() {
 }
 
 ###########################################
-########### PUBLIC AKS CLUSTER ############
+########### Public AKS Clusters ###########
 createPublicAKSClusterCNI() {
     echo "Creating AKS cluster with azure cni"
     createPublicAKSCluster
@@ -487,7 +488,7 @@ createPublicAKSCluster() {
 }
 
 ###########################################
-########### PRIVATE AKS CLUSTER ###########
+########### Private AKS Cluster ###########
 createPrivateAKSClusterAPIIntegration() {
     echo "Creating private AKS cluster with API vnet integration"
     createRG
@@ -520,7 +521,8 @@ createPrivateAKSCluster() {
     createVM
 }
 
-########### OTHERS ###########
+###########################################
+################# Others ##################
 createStandaloneVM() {
     createRG
     createVNET
@@ -562,12 +564,19 @@ main() {
             break
             ;;
         3)
-            echo "Listing AKS clusters"
-            az aks list -g $rg -o tsv --query '[].[name]'
+             mapfile -t clusters < <(az aks list -g $rg --only-show-errors -o tsv --query '[].[name]')
 
-            for i in "${!clusters[@]}"; do
-                printf "$i ${clusters[i]} \n"
-            done
+            if [ ${#clusters[@]} -eq 0 ]; then
+                echo "No AKS Clusters"
+            else
+                 echo "################################################################"
+                echo "##                        AKS Clusters                        ##"
+                echo "################################################################"
+                for i in "${!clusters[@]}"; do
+                    printf "## $(($i+1)) - ${clusters[i]}                                          ##\n"
+                done
+                echo "################################################################"
+            fi
 
             break
             ;;
@@ -575,13 +584,13 @@ main() {
             mapfile -t clusters < <(az aks list -g $rg --only-show-errors -o tsv --query '[].[name]')
 
             if [ ${#clusters[@]} -eq 0 ]; then
-                echo "No AKS clusters"
+                echo "No AKS Clusters"
             else
                 echo "################################################################"
                 echo "##                        AKS Clusters                        ##"
                 echo "################################################################"
                 for i in "${!clusters[@]}"; do
-                    printf "## $i - ${clusters[i]}                                          ##\n"
+                    printf "## $(($i+1)) - ${clusters[i]}                                          ##\n"
                 done
                 echo "################################################################"
 

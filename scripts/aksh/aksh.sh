@@ -42,127 +42,11 @@ publicIp="myPublicIp"
 #Others
 keyVaultName="akskeyvault$date"
 
-## FUNCTIONS ##
-aksTemplates() {
+############################################
+################ Functions #################
 
-    header
-    echo "################################################################"
-    echo "## 01 - AKS cluster with Azure CNI                            ##"
-    echo "## 02 - AKS cluster with Kubenet                              ##"
-    echo "## 03 - AKS cluster with Azure CNI overlay and calico         ##"
-    echo "## 04 - AKS cluster with Azure CNI overlay, cilium and ACNS   ##"
-    echo "## 05 - AKS cluster with Kubenet, AAD and K8s RBAC            ##"
-    echo "## 06 - AKS cluster with Kubenet, AAD and Azure RBAC          ##"
-    echo "## 07 - AKS cluster with Defender and Policy                  ##"
-    echo "## 08 - AKS cluster with Azure Monitoring                     ##"
-    echo "## 09 - AKS cluster with Azure Key Vault                      ##"
-    echo "## 10 - AKS cluster with App Routing                          ##"
-    echo "## 11 - AKS cluster with AGIC addon                           ##"
-    echo "## 12 - AKS cluster with Node autoprovisioning                ##"
-    echo "## 13 - AKS cluster with Azure Linux nodes                    ##"
-    echo "## 14 - AKS cluster with Windows node pool                    ##"
-    echo "## 15 - AKS cluster with Zone Aligned node pools              ##"
-    echo "## 16 - AKS cluster with Dapr extension                       ##"
-    echo "## 17 - AKS cluster with Flux extension                       ##"
-    echo "## 18 - AKS cluster with Keda addon                           ##"
-    echo "## 30 - Private AKS cluster                                   ##"
-    echo "## 31 - Private AKS cluster with api vnet integration         ##"
-    echo "## 99 - Standalone VM                                         ##"
-    echo "################################################################"
-
-    while true; do
-
-        read -p "Option: " opt
-
-        case $opt in
-        1)
-            createPublicAKSClusterCNI
-            break
-            ;;
-        2)
-            createPublicAKSClusterKubenet
-            break
-            ;;
-        3)
-            createPublicAKSClusterCNIOverlayCalico
-            break
-            ;;
-        4)
-            createPublicAKSClusterCNIOverlayCiliumACNS
-            break
-            ;;
-        5)
-            createPublicAKSClusterAADK8sRbac
-            break
-            ;;
-        6)
-            createPublicAKSClusterAADAzureRbac
-            break
-            ;;
-        7)
-            createPublicAKSClusterPolicyDefender
-            break
-            ;;
-        8)
-            createPublicAKSClusterMonitoring
-            break
-            ;;
-        9)
-            createPublicAKSClusterKeyVault
-            break
-            ;;
-        10)
-            createPublicAKSClusterAppRouting
-            break
-            ;;
-        11)
-            createPublicAKSClusterAGIC
-            break
-            ;;
-        12)
-            createPublicAKSClusterNAP
-            break
-            ;;
-        13)
-            createPublicAKSClusterAzureLinux
-            break
-            ;;
-        14)
-            createPublicAKSClusterAKSWindowsNodePool
-            break
-            ;;
-        15)
-            createPublicAKSClusterZoneAligned
-            break
-            ;;
-        16)
-            createPublicAKSClusterDapr
-            break
-            ;;
-        17)
-            createPublicAKSClusterFlux
-            break
-            ;;
-        18)
-            createPublicAKSClusterKeda
-            break
-            ;;
-        30)
-            createPrivateAKSCluster
-            break
-            ;;
-        31)
-            createPrivateAKSClusterAPIIntegration
-            break
-            ;;
-        99)
-            createStandaloneVM
-            break
-            ;;
-        esac
-    done
-}
-
+############################################
+########### AKS Custom Cluster #############
 aksCustom() {
 
     aksPublicPrivate
@@ -197,8 +81,8 @@ aksPublicPrivate() {
 
 aksVersion() {
     echo "Available AKS versions:"
-    
-    mapfile -t versions < <( az aks get-versions -l swedencentral --only-show-errors -o table | tail -n +3 | awk '{print $1}')
+
+    mapfile -t versions < <(az aks get-versions -l swedencentral --only-show-errors -o table | tail -n +3 | awk '{print $1}')
 
     echo "##############       AKS Cluster Version       #################"
     for i in "${!versions[@]}"; do
@@ -325,6 +209,170 @@ aksAddons() {
     done
 }
 
+############################################
+############# AKS Templates ################
+aksTemplates() {
+    header
+    echo "## NETWORK PLUGINS                                            ##"
+    echo "## 01 - AKS cluster with Azure CNI Overlay                    ##"
+    echo "## 02 - AKS cluster with Azure CNI Node Subnet                ##"
+    echo "## 03 - AKS cluster with Azure CNI Dynamic IP Allocation      ##"
+    echo "## 04 - AKS cluster with Kubenet                              ##"
+    echo "## 05 - AKS cluster with Bring Your Own CNI                   ##"
+    echo "################################################################"
+    echo "## NETWORK POLICIES                                           ##"
+    echo "## 06 - AKS cluster with Azure CNI Node Subnet and Azure NPM  ##"
+    echo "## 07 - AKS cluster with Azure CNI Overlay and Calico         ##"
+    echo "## 08 - AKS cluster with Azure CNI Overlay and Cilium         ##"
+    echo "################################################################"
+    echo "## AUTHENTICATION                                             ##"
+    echo "## 09 - AKS cluster with AAD and K8s RBAC                     ##"
+    echo "## 10 - AKS cluster with AAD and Azure RBAC                   ##"
+    echo "################################################################"
+    echo "## ADDONS                                                     ##"
+    echo "## 11 - AKS cluster with Azure Defender and Azure Policy      ##"
+    echo "## 12 - AKS cluster with Azure Monitoring                     ##"
+    echo "## 13 - AKS cluster with Azure Keyvault Secret Provider Addon ##"
+    echo "## 14 - AKS cluster with AGIC Addon                           ##"
+    echo "## 15 - AKS cluster with Keda Addon                           ##"
+    echo "## 16 - AKS cluster with Virtual Node Addon                   ##"
+    echo "## 17 - AKS cluster with Istio-based Service Mesh Addon       ##"
+    echo "################################################################"
+    echo "## EXTENSIONS                                                 ##"
+    echo "## 18 - AKS cluster with Dapr Extension                       ##"
+    echo "## 19 - AKS cluster with Flux Extension                       ##"
+    echo "################################################################"
+    echo "## OTHERS                                                     ##"
+    echo "## 20 - AKS cluster with App Routing                          ##"
+    echo "## 21 - AKS cluster with Azure Linux Nodes                    ##"
+    echo "## 22 - AKS cluster with Zone Aligned Node Pools              ##"
+    echo "## 23 - AKS cluster with Windows Node Pool                    ##"
+    echo "## 24 - AKS cluster with Node Autoprovisioning                ##"
+    echo "## 25 - AKS cluster with Network Observability                ##"
+    echo "################################################################"
+    echo "## PRIVATE CLUSTERS                                           ##"
+    echo "## 30 - Private AKS cluster                                   ##"
+    echo "## 31 - Private AKS cluster with api vnet integration         ##"
+    echo "################################################################"
+
+    while true; do
+
+        read -p "Option: " opt
+
+        case $opt in
+        1)
+            createPublicAKSClusterAzureCNIOverlay
+            break
+            ;;
+        2)
+            createPublicAKSClusterAzureCNINodeSubnet
+            break
+            ;;
+        3)
+            createPublicAKSClusterAzureCNIDynamicIPAllocation
+            break
+            ;;
+        4)
+            createPublicAKSClusterKubenet
+            break
+            ;;
+        5)
+            createPublicAKSClusterBringYourOwnCNI
+            break
+            ;;
+        6)
+            createPublicAKSClusterAzureCNINodeSubnetAzureNPM
+            break
+            ;;
+        7)
+            createPublicAKSClusterAzureCNIOverlayCalico
+            break
+            ;;
+        8)
+            createPublicAKSClusterAzureCNIOverlayCilium
+            break
+            ;;
+        9)
+            createPublicAKSClusterAADK8sRbac
+            break
+            ;;
+        10)
+            createPublicAKSClusterAADAzureRbac
+            break
+            ;;
+        11)
+            createPublicAKSClusterPolicyDefender
+            break
+            ;;
+        12)
+            createPublicAKSClusterAzureMonitoring
+            break
+            ;;
+        13)
+            createPublicAKSClusterKeyVault
+            break
+            ;;
+        14)
+            createPublicAKSClusterAGIC
+            break
+            ;;
+        15)
+            createPublicAKSClusterKeda
+            break
+            ;;
+        16)
+            createPublicAKSClusterVirtualNode
+            break
+            ;;
+        17)
+            createPublicAKSClusterIstioServiceMesh
+            break
+            ;;
+        18)
+            createPublicAKSClusterDapr
+            break
+            ;;
+        19)
+            createPublicAKSClusterFlux
+            break
+            ;;
+        20)
+            createPublicAKSClusterAppRouting
+            break
+            ;;
+        21)
+            createPublicAKSClusterAzureLinux
+            break
+            ;;
+        22)
+            createPublicAKSClusterZoneAligned
+            break
+            ;;
+        23)
+            createPublicAKSClusterWindowsNodePool
+            break
+            ;;
+        24)
+            createPublicAKSClusterNAP
+            break
+            ;;
+        25)
+            createPublicAKSClusterNetworkObservability
+            break
+            ;;
+        30)
+            createPrivateAKSCluster
+            break
+            ;;
+        31)
+            createPrivateAKSClusterAPIIntegration
+            break
+            ;;
+        esac
+
+    done
+}
+
 ###########################################
 ############## Resource Group #############
 createRG() {
@@ -341,9 +389,19 @@ createVNET() {
 
 ###########################################
 ########### Public AKS Clusters ###########
-createPublicAKSClusterCNI() {
-    echo "Creating AKS cluster with azure cni"
+
+createPublicAKSClusterAzureCNIOverlay() {
+    echo "Creating AKS cluster with Azure CNI Overlay"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR"
+}
+
+createPublicAKSClusterAzureCNINodeSubnet() {
+    echo "Creating AKS cluster with Azure CNI"
     createPublicAKSCluster
+}
+
+createPublicAKSClusterAzureCNIDynamicIPAllocation() { ## TODO
+    echo "Creating AKS cluster with Azure CNI Dynamic IP Allocation"
 }
 
 createPublicAKSClusterKubenet() {
@@ -352,21 +410,29 @@ createPublicAKSClusterKubenet() {
     createPublicAKSCluster "--pod-cidr $podCIDR"
 }
 
-createPublicAKSClusterCNIOverlayCalico() {
-    echo "Creating AKS cluster with azure cni overlay and calico"
+createPublicAKSClusterBringYourOwnCNI() { ## TODO
+    echo "Creating AKS cluster with Bring Your Own CNI"
+}
+
+createPublicAKSClusterAzureCNINodeSubnetAzureNPM() { ## TODO
+    echo "Creating AKS cluster with Bring Your Own CNI"
+}
+
+createPublicAKSClusterAzureCNIOverlayCalico() {
+    echo "Creating AKS cluster with Azure CNI Overlay and Calico"
     networkPolicy="calico"
     createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR"
 }
 
-createPublicAKSClusterCNIOverlayCiliumACNS() {
+createPublicAKSClusterAzureCNIOverlayCilium() {
     networkPolicy="cilium"
     networkDataplane="cilium"
-    echo "Creating AKS cluster with azure cni overlay and cilium"
-    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --enable-acns"
+    echo "Creating AKS cluster with Azure CNI Overlay and Cilium"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR"
 }
 
 createPublicAKSClusterAADK8sRbac() {
-    echo "Creating AKS cluster with AAD and K8s RBAC"
+    echo "Creating AKS cluster with AAD and Kubernetes RBAC"
     createPublicAKSCluster "--enable-aad"
 }
 
@@ -376,35 +442,30 @@ createPublicAKSClusterAADAzureRbac() {
 }
 
 createPublicAKSClusterPolicyDefender() {
-    echo "Creating AKS cluster with azure cni, defender and policy"
+    echo "Creating AKS cluster with Azure CNI, Azure Defender and Azure Policy"
     createPublicAKSCluster "--enable-defender --enable-addons azure-policy"
 }
 
-createPublicAKSClusterMonitoring() {
-    echo "Creating AKS cluster with monitoring and prometheus"
+createPublicAKSClusterAzureMonitoring() {
+    echo "Creating AKS cluster with Container Insights and Managed Prometheus"
     createPublicAKSCluster "--enable-azure-monitor-metrics --enable-addons monitoring"
 }
 
 createPublicAKSClusterKeyVault() {
-    echo "Creating AKS cluster with azure key vault"
+    echo "Creating AKS cluster with Azure Key Vault"
     createPublicAKSCluster "--enable-addons azure-keyvault-secrets-provider"
 
-    echo "Creating a new Azure key vault"
+    echo "Creating a new Azure Key Vault"
     az keyvault create --name $keyVaultName --resource-group $rg --location $location --enable-rbac-authorization
 
     az aks connection create keyvault --connection keyvaultconnection --resource-group $rg --name $aks --target-resource-group $rg --vault $keyVaultName --enable-csi --client-type none
 }
 
-createPublicAKSClusterAppRouting() {
-    echo "Creating AKS cluster with app routing addon"
-    createPublicAKSCluster "--enable-app-routing"
-}
-
 createAppGw() {
-    echo "Creating Application Gateway subnet"
+    echo "Creating Application Gateway Subnet"
     az network vnet subnet create -g $rg --vnet-name $vnet --name $appGwSubnet --address-prefixes $appGwSubnetAddr
 
-    echo "Creating public ip"
+    echo "Creating Public IP"
     az network public-ip create --name $publicIp --resource-group $rg --allocation-method Static --sku Standard
 
     echo "Creating Application Gateway"
@@ -412,7 +473,7 @@ createAppGw() {
 }
 
 createPublicAKSClusterAGIC() {
-    echo "Creating AKS cluster with AGIC addon"
+    echo "Creating AKS cluster with AGIC Addon"
     createRG
     createVNET
 
@@ -423,32 +484,19 @@ createPublicAKSClusterAGIC() {
     createAKSCluster "--enable-addons ingress-appgw --appgw-id $appgwId"
 }
 
-createPublicAKSClusterNAP() {
-    echo "Creating AKS cluster with Node autoprovisioning"
-    networkDataplane="cilium"
-    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --node-provisioning-mode Auto"
+createPublicAKSClusterKeda() {
+    echo "Creating AKS cluster with Keda Addon"
+    createPublicAKSCluster "--enable-keda"
 }
 
-createPublicAKSClusterAzureLinux() {
-    echo "Creating AKS cluster with Azure Linux nodes"
-    createPublicAKSCluster "--os-sku AzureLinux"
-}
-
-createPublicAKSClusterAKSWindowsNodePool() {
-    echo "Creating AKS cluster with windows node pool"
+createPublicAKSClusterVirtualNode() { #TODO
+    echo "Creating AKS cluster with Virtual Node"
     createPublicAKSCluster
-    echo "Add new windows node pool"
-    az aks nodepool add --cluster-name $aks --name win -g $rg --os-type Windows --mode User --node-count 1 --node-vm-size Standard_D2s_v3
 }
 
-createPublicAKSClusterZoneAligned() {
-    echo "Creating AKS cluster with Zone Aligned node pools"
-    createPublicAKSCluster "--node-count 3 --zones 1 2 3"
-
-    echo "Add user node pools"
-    az aks nodepool add -g $rg --cluster-name $aks --name userpool1 --mode User --node-count 1 --node-vm-size $sku --zones 1
-    az aks nodepool add -g $rg --cluster-name $aks --name userpool2 --mode User --node-count 1 --node-vm-size $sku --zones 2
-    az aks nodepool add -g $rg --cluster-name $aks --name userpool3 --mode User --node-count 1 --node-vm-size $sku --zones 3
+createPublicAKSClusterIstioServiceMesh() { #TODO
+    echo "Creating AKS cluster with Istio-based Service Mesh Addon"
+    createPublicAKSCluster "--enable-azure-service-mesh"
 }
 
 createPublicAKSClusterDapr() {
@@ -467,14 +515,49 @@ createPublicAKSClusterFlux() {
     az k8s-configuration flux create -g $rg -c $aks -n cluster-config --namespace cluster-config -t managedClusters --scope cluster -u https://github.com/Azure/gitops-flux2-kustomize-helm-mt --branch main --kustomization name=infra path=./infrastructure prune=true --kustomization name=apps path=./apps/staging prune=true dependsOn=\["infra"\]
 }
 
-createPublicAKSClusterKeda() {
-    echo "Creating AKS cluster with Keda addon"
-    createPublicAKSCluster "--enable-keda"
+createPublicAKSClusterAppRouting() {
+    echo "Creating AKS cluster with app routing addon"
+    createPublicAKSCluster "--enable-app-routing"
+}
+
+createPublicAKSClusterAzureLinux() {
+    echo "Creating AKS cluster with Azure Linux nodes"
+    createPublicAKSCluster "--os-sku AzureLinux"
+}
+
+createPublicAKSClusterZoneAligned() {
+    echo "Creating AKS cluster with Zone Aligned node pools"
+    createPublicAKSCluster "--node-count 3 --zones 1 2 3"
+
+    echo "Add user node pools"
+    az aks nodepool add -g $rg --cluster-name $aks --name userpool1 --mode User --node-count 1 --node-vm-size $sku --zones 1
+    az aks nodepool add -g $rg --cluster-name $aks --name userpool2 --mode User --node-count 1 --node-vm-size $sku --zones 2
+    az aks nodepool add -g $rg --cluster-name $aks --name userpool3 --mode User --node-count 1 --node-vm-size $sku --zones 3
+}
+
+createPublicAKSClusterWindowsNodePool() {
+    echo "Creating AKS cluster with windows node pool"
+    createPublicAKSCluster
+    echo "Add new windows node pool"
+    az aks nodepool add --cluster-name $aks --name win -g $rg --os-type Windows --mode User --node-count 1 --node-vm-size Standard_D2s_v3
+}
+
+createPublicAKSClusterNAP() {
+    echo "Creating AKS cluster with Node Autoprovisioning"
+    networkDataplane="cilium"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --node-provisioning-mode Auto"
+}
+
+createPublicAKSClusterNetworkObservability() {
+    networkPolicy="cilium"
+    networkDataplane="cilium"
+    echo "Creating AKS cluster with Network Observability"
+    createPublicAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --enable-acns"
 }
 
 createAKSCluster() {
     aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
-    echo "Creating AKS cluster"
+    echo "Creating AKS Cluster"
     az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount $1
 
     echo "az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
@@ -490,7 +573,7 @@ createPublicAKSCluster() {
 ###########################################
 ########### Private AKS Cluster ###########
 createPrivateAKSClusterAPIIntegration() {
-    echo "Creating private AKS cluster with API vnet integration"
+    echo "Creating private AKS Cluster with API Vnet Integration"
     createRG
     createVNET
     az network vnet subnet create -g $rg --vnet-name $vnet --name "apiserver-subnet" --delegations Microsoft.ContainerService/managedClusters --address-prefixes $apiSubnetAddr
@@ -512,7 +595,7 @@ createPrivateAKSClusterAPIIntegration() {
 }
 
 createPrivateAKSCluster() {
-    echo "Creating private AKS cluster"
+    echo "Creating private AKS Cluster"
     createRG
     createVNET
 
@@ -564,16 +647,16 @@ main() {
             break
             ;;
         3)
-             mapfile -t clusters < <(az aks list -g $rg --only-show-errors -o tsv --query '[].[name]')
+            mapfile -t clusters < <(az aks list -g $rg --only-show-errors -o tsv --query '[].[name]')
 
             if [ ${#clusters[@]} -eq 0 ]; then
                 echo "No AKS Clusters"
             else
-                 echo "################################################################"
+                echo "################################################################"
                 echo "##                        AKS Clusters                        ##"
                 echo "################################################################"
                 for i in "${!clusters[@]}"; do
-                    printf "## $(($i+1)) - ${clusters[i]}                                          ##\n"
+                    printf "## $(($i + 1)) - ${clusters[i]}                                          ##\n"
                 done
                 echo "################################################################"
             fi
@@ -590,7 +673,7 @@ main() {
                 echo "##                        AKS Clusters                        ##"
                 echo "################################################################"
                 for i in "${!clusters[@]}"; do
-                    printf "## $(($i+1)) - ${clusters[i]}                                          ##\n"
+                    printf "## $(($i + 1)) - ${clusters[i]}                                          ##\n"
                 done
                 echo "################################################################"
 

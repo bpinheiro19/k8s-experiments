@@ -41,6 +41,8 @@ publicIp="myPublicIp"
 
 #Others
 keyVaultName="akskeyvault$date"
+grafana="aksgrafana"
+monitorWorkspace="aksmonitor"
 
 ############################################
 ################ Functions #################
@@ -551,7 +553,20 @@ createPublicAKSClusterNetworkObservability() {
     echo "Creating AKS cluster with Network Observability"
     networkPolicy="cilium"
     networkDataplane="cilium"
-    createPublicAKSClusterWithRGAndVNET "--network-plugin-mode overlay --pod-cidr $podCIDR --enable-acns"
+
+    createRG
+    createVNET
+
+    echo "Creating Azure Monitor Workspace"
+    az resource create -g $rg --namespace microsoft.monitor --resource-type accounts --name $monitorWorkspace --location $location --properties '{}'
+
+    echo "Creating Grafana Instance"
+    az grafana create --name $grafana -g $rg
+
+    grafanaId=$(az grafana show --name $grafana -g $rg --query id --output tsv)
+    monitorWorkspaceId=$(az resource show -g $rg --name $monitorWorkspace --resource-type "Microsoft.Monitor/accounts" --query id --output tsv)
+
+    createAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --enable-acns --enable-azure-monitor-metrics --azure-monitor-workspace-resource-id $monitorWorkspaceId --grafana-resource-id $grafanaId"
 }
 
 createAKSCluster() {

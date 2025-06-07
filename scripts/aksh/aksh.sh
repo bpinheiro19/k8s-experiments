@@ -24,8 +24,10 @@ vnet="vnet$date"
 vnetAddr=10.0.0.0/16
 aksSubnet="aks-subnet"
 apiSubnet="apiserver-subnet"
+virtualNodeSubnet="virtual-node-subnet"
 aksSubnetAddr=10.0.240.0/24
 apiSubnetAddr=10.0.242.0/24
+virtualNodeSubnetAddr=10.0.243.0/24
 
 #VM
 vm="aksVM"
@@ -490,9 +492,15 @@ createPublicAKSClusterKeda() { ## TEST
     createPublicAKSClusterWithRGAndVNET "--enable-keda"
 }
 
-createPublicAKSClusterVirtualNode() { #TODO
+createPublicAKSClusterVirtualNode() {
     echo "Creating AKS cluster with Virtual Node"
-    createPublicAKSClusterWithRGAndVNET
+
+    createRG
+    createVNET
+
+    az network vnet subnet create -g $rg --vnet-name $vnet --name $virtualNodeSubnet --address-prefixes $virtualNodeSubnetAddr
+
+    createAKSCluster "--enable-addons virtual-node --aci-subnet-name $virtualNodeSubnet"
 }
 
 createPublicAKSClusterIstioServiceMesh() {

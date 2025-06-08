@@ -18,6 +18,7 @@ podCIDR=172.16.0.0/16
 dnsIp=10.0.241.10
 sku="Standard_D2ps_v6"
 nodeCount=1
+overlay="--network-plugin-mode overlay --pod-cidr $podCIDR"
 
 #VNET
 vnet="vnet$date"
@@ -112,8 +113,7 @@ aksNetworkPlugin() {
         case $networkplugin in
         1)
             networkPlugin="azure"
-            networkPluginMode="overlay"
-            extraArgs+="--network-plugin-mode $networkPluginMode --pod-cidr $podCIDR "
+            extraArgs+="$overlay "
             break
             ;;
         2)
@@ -395,7 +395,7 @@ createVNET() {
 ########### Public AKS Clusters ###########
 createPublicAKSClusterAzureCNIOverlay() {
     echo "Creating AKS cluster with Azure CNI Overlay"
-    createPublicAKSClusterWithRGAndVNET "--network-plugin-mode overlay --pod-cidr $podCIDR"
+    createPublicAKSClusterWithRGAndVNET "$overlay"
 }
 
 createPublicAKSClusterAzureCNINodeSubnet() {
@@ -421,40 +421,40 @@ createPublicAKSClusterAzureCNINodeSubnetAzureNPM() { ## TODO
     echo "Creating AKS cluster with Bring Your Own CNI"
 }
 
-createPublicAKSClusterAzureCNIOverlayCalico() { ## TEST
+createPublicAKSClusterAzureCNIOverlayCalico() {
     echo "Creating AKS cluster with Azure CNI Overlay and Calico"
     networkPolicy="calico"
-    createPublicAKSClusterWithRGAndVNET "--network-plugin-mode overlay --pod-cidr $podCIDR"
+    createPublicAKSClusterWithRGAndVNET "$overlay"
 }
 
-createPublicAKSClusterAzureCNIOverlayCilium() { ## TEST
+createPublicAKSClusterAzureCNIOverlayCilium() {
     networkPolicy="cilium"
     networkDataplane="cilium"
     echo "Creating AKS cluster with Azure CNI Overlay and Cilium"
-    createPublicAKSClusterWithRGAndVNET "--network-plugin-mode overlay --pod-cidr $podCIDR"
+    createPublicAKSClusterWithRGAndVNET "$overlay"
 }
 
-createPublicAKSClusterAADK8sRbac() { ## TEST
+createPublicAKSClusterAADK8sRbac() {
     echo "Creating AKS cluster with AAD and Kubernetes RBAC"
     createPublicAKSClusterWithRGAndVNET "--enable-aad"
 }
 
-createPublicAKSClusterAADAzureRbac() { ## TEST
+createPublicAKSClusterAADAzureRbac() {
     echo "Creating AKS cluster with AAD and Azure RBAC"
     createPublicAKSClusterWithRGAndVNET "--enable-aad --enable-azure-rbac"
 }
 
-createPublicAKSClusterPolicyDefender() { ## TEST
+createPublicAKSClusterPolicyDefender() {
     echo "Creating AKS cluster with Azure CNI, Azure Defender and Azure Policy"
     createPublicAKSClusterWithRGAndVNET "--enable-defender --enable-addons azure-policy"
 }
 
-createPublicAKSClusterAzureMonitoring() { ## TEST
+createPublicAKSClusterAzureMonitoring() {
     echo "Creating AKS cluster with Container Insights and Managed Prometheus"
     createPublicAKSClusterWithRGAndVNET "--enable-azure-monitor-metrics --enable-addons monitoring"
 }
 
-createPublicAKSClusterKeyVault() { ## TEST
+createPublicAKSClusterKeyVault() { # TEST
     echo "Creating AKS cluster with Azure Key Vault"
     createPublicAKSClusterWithRGAndVNET "--enable-addons azure-keyvault-secrets-provider"
 
@@ -475,19 +475,19 @@ createAppGw() {
     az network application-gateway create --name $appGw --resource-group $rg --sku Standard_v2 --public-ip-address $publicIp --vnet-name $vnet --subnet $appGwSubnet --priority 100
 }
 
-createPublicAKSClusterAGIC() { ## TEST
+createPublicAKSClusterAGIC() {
     echo "Creating AKS cluster with AGIC Addon"
     createRG
     createVNET
 
     createAppGw
 
-    appgwId=$(az network application-gateway show --name $appGw --resource-group $rg -o tsv --query "id")
+    appgwId=$(az network application-gateway show --name $appGw -g $rg -o tsv --query "id")
 
     createAKSCluster "--enable-addons ingress-appgw --appgw-id $appgwId"
 }
 
-createPublicAKSClusterKeda() { ## TEST
+createPublicAKSClusterKeda() {
     echo "Creating AKS cluster with Keda Addon"
     createPublicAKSClusterWithRGAndVNET "--enable-keda"
 }
@@ -516,7 +516,7 @@ createPublicAKSClusterDapr() { ## TEST
     az k8s-extension create --cluster-type managedClusters --cluster-name $aks --resource-group $rg --name dapr --extension-type Microsoft.Dapr --auto-upgrade-minor-version true
 }
 
-createPublicAKSClusterFlux() { ## TEST
+createPublicAKSClusterFlux() {
     echo "Creating AKS cluster with Flux extension"
     createPublicAKSClusterWithRGAndVNET
 
@@ -524,17 +524,17 @@ createPublicAKSClusterFlux() { ## TEST
     az k8s-configuration flux create -g $rg -c $aks -n cluster-config --namespace cluster-config -t managedClusters --scope cluster -u https://github.com/Azure/gitops-flux2-kustomize-helm-mt --branch main --kustomization name=infra path=./infrastructure prune=true --kustomization name=apps path=./apps/staging prune=true dependsOn=\["infra"\]
 }
 
-createPublicAKSClusterAppRouting() { ## TEST
+createPublicAKSClusterAppRouting() {
     echo "Creating AKS cluster with app routing addon"
     createPublicAKSClusterWithRGAndVNET "--enable-app-routing"
 }
 
-createPublicAKSClusterAzureLinux() { ## TEST
+createPublicAKSClusterAzureLinux() {
     echo "Creating AKS cluster with Azure Linux nodes"
     createPublicAKSClusterWithRGAndVNET "--os-sku AzureLinux"
 }
 
-createPublicAKSClusterZoneAligned() { ## TEST
+createPublicAKSClusterZoneAligned() {
     echo "Creating AKS cluster with Zone Aligned node pools"
     createPublicAKSClusterWithRGAndVNET "--node-count 3 --zones 1 2 3"
 
@@ -544,17 +544,17 @@ createPublicAKSClusterZoneAligned() { ## TEST
     az aks nodepool add -g $rg --cluster-name $aks --name userpool3 --mode User --node-count 1 --node-vm-size $sku --zones 3
 }
 
-createPublicAKSClusterWindowsNodePool() { ## TEST
+createPublicAKSClusterWindowsNodePool() {
     echo "Creating AKS cluster with windows node pool"
     createPublicAKSClusterWithRGAndVNET
     echo "Add new windows node pool"
     az aks nodepool add --cluster-name $aks --name win -g $rg --os-type Windows --mode User --node-count 1 --node-vm-size Standard_D2s_v3
 }
 
-createPublicAKSClusterNAP() { ## TEST
+createPublicAKSClusterNAP() {
     echo "Creating AKS cluster with Node Autoprovisioning"
     networkDataplane="cilium"
-    createPublicAKSClusterWithRGAndVNET "--network-plugin-mode overlay --pod-cidr $podCIDR --node-provisioning-mode Auto"
+    createPublicAKSClusterWithRGAndVNET "$overlay --node-provisioning-mode Auto"
 }
 
 createPublicAKSClusterNetworkObservability() {
@@ -574,7 +574,7 @@ createPublicAKSClusterNetworkObservability() {
     grafanaId=$(az grafana show --name $grafana -g $rg --query id --output tsv)
     monitorWorkspaceId=$(az resource show -g $rg --name $monitorWorkspace --resource-type "Microsoft.Monitor/accounts" --query id --output tsv)
 
-    createAKSCluster "--network-plugin-mode overlay --pod-cidr $podCIDR --enable-acns --enable-azure-monitor-metrics --azure-monitor-workspace-resource-id $monitorWorkspaceId --grafana-resource-id $grafanaId"
+    createAKSCluster "$overlay --enable-acns --enable-azure-monitor-metrics --azure-monitor-workspace-resource-id $monitorWorkspaceId --grafana-resource-id $grafanaId"
 }
 
 createAKSCluster() {

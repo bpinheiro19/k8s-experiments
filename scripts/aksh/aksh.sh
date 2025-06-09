@@ -60,7 +60,8 @@ aksCustom() {
     aksNetworkPolicy
     aksAddons
 
-    createPublicAKSClusterWithRGAndVnet "$extraArgs"
+    createPublicAKSClusterWithRGAndVNET "$extraArgs"
+
 }
 
 aksPublicPrivate() {
@@ -156,7 +157,7 @@ aksNetworkPolicy() {
             ;;
         3)
             networkPolicy="cilium"
-            extraArgs+="--network-dataplane cilium "
+            networkDataplane="cilium"
             break
             ;;
         esac

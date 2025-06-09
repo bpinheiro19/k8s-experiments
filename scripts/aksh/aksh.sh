@@ -16,7 +16,7 @@ networkDataplane="azure"
 serviceCidr=10.0.241.0/24
 podCIDR=172.16.0.0/16
 dnsIp=10.0.241.10
-sku="Standard_D2ps_v6"
+sku="Standard_D2s_v5"
 nodeCount=1
 overlay="--network-plugin-mode overlay --pod-cidr $podCIDR"
 
@@ -454,14 +454,14 @@ createPublicAKSClusterAzureMonitoring() {
     createPublicAKSClusterWithRGAndVNET "--enable-azure-monitor-metrics --enable-addons monitoring"
 }
 
-createPublicAKSClusterKeyVault() { # TEST
+createPublicAKSClusterKeyVault() {
     echo "Creating AKS cluster with Azure Key Vault"
     createPublicAKSClusterWithRGAndVNET "--enable-addons azure-keyvault-secrets-provider"
 
     echo "Creating a new Azure Key Vault"
     az keyvault create --name $keyVaultName --resource-group $rg --location $location --enable-rbac-authorization
 
-    az aks connection create keyvault --connection keyvaultconnection --resource-group $rg --name $aks --target-resource-group $rg --vault $keyVaultName --enable-csi --client-type none
+    az aks connection create keyvault --connection keyvaultconnection$date --resource-group $rg --name $aks --target-resource-group $rg --vault $keyVaultName --enable-csi --client-type none
 }
 
 createAppGw() {
@@ -508,7 +508,7 @@ createPublicAKSClusterIstioServiceMesh() {
     createPublicAKSClusterWithRGAndVNET "--enable-azure-service-mesh"
 }
 
-createPublicAKSClusterDapr() { ## TEST
+createPublicAKSClusterDapr() {
     echo "Creating AKS cluster with Dapr extension"
     createPublicAKSClusterWithRGAndVNET "--node-count 3"
 

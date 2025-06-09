@@ -26,9 +26,11 @@ vnetAddr=10.0.0.0/16
 aksSubnet="aks-subnet"
 apiSubnet="apiserver-subnet"
 virtualNodeSubnet="virtual-node-subnet"
+podSubnet="pod-subnet"
 aksSubnetAddr=10.0.240.0/24
 apiSubnetAddr=10.0.242.0/24
 virtualNodeSubnetAddr=10.0.243.0/24
+podSubnetAddr=10.0.244.0/22
 
 #VM
 vm="aksVM"
@@ -404,8 +406,15 @@ createPublicAKSClusterAzureCNINodeSubnet() {
     createPublicAKSClusterWithRGAndVNET
 }
 
-createPublicAKSClusterAzureCNIDynamicIPAllocation() { ## TODO
-    echo "Creating AKS cluster with Azure CNI Dynamic IP Allocation"
+createPublicAKSClusterAzureCNIDynamicIPAllocation() {
+    echo "AKS cluster with Azure CNI Dynamic IP Allocation"
+    createRG
+    createVNET
+
+    az network vnet subnet create -g $rg --vnet-name $vnet --name $podSubnet --address-prefixes $podSubnetAddr -o none
+
+    podSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $podSubnet --query id -o tsv)
+    createAKSCluster "--pod-subnet-id $podSubnetId"
 }
 
 createPublicAKSClusterKubenet() {

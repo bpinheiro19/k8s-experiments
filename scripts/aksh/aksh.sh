@@ -68,6 +68,7 @@ aksCustom() {
 
 aksPublicPrivate() {
     while true; do
+        header
         echo "##############         AKS Cluster Type        #################"
         echo "## 01 - Public AKS cluster                                    ##"
         echo "## 02 - Private AKS cluster                                   ##"
@@ -88,7 +89,7 @@ aksPublicPrivate() {
 }
 
 aksVersion() {
-    echo "Available AKS versions:"
+    header
 
     mapfile -t versions < <(az aks get-versions -l swedencentral --only-show-errors -o table | tail -n +3 | awk '{print $1}')
 
@@ -103,8 +104,9 @@ aksVersion() {
 }
 
 aksNetworkPlugin() {
-    header
+    
     while true; do
+        header
         echo "##############           Network Plugin        #################"
         echo "## 01 - Azure Overlay                                         ##"
         echo "## 02 - Azure CNI NodeSubnet                                  ##"
@@ -132,9 +134,9 @@ aksNetworkPlugin() {
 }
 
 aksNetworkPolicy() {
-    header
 
     while true; do
+        header
         echo "##############           Network Policy        #################"
         echo "## 00 - None                                                  ##"
         echo "## 01 - Azure                                                 ##"
@@ -170,6 +172,7 @@ aksNetworkPolicy() {
 aksAddons() {
 
     while true; do
+        header
         echo "##############             Addons              #################"
         echo "## 00 - None                                                  ##"
         echo "## 01 - Azure Key Vault                                       ##"
@@ -220,46 +223,55 @@ aksAddons() {
 ############# AKS Templates ################
 aksTemplates() {
     header
-    echo "## NETWORK PLUGINS                                            ##"
+    echo "## ---------------------------------------------------------- ##"
+    echo "##                      NETWORK PLUGINS                       ##"
+    echo "## ---------------------------------------------------------- ##"
     echo "## 01 - AKS cluster with Azure CNI Overlay                    ##"
     echo "## 02 - AKS cluster with Azure CNI Node Subnet                ##"
     echo "## 03 - AKS cluster with Azure CNI Dynamic IP Allocation      ##"
     echo "## 04 - AKS cluster with Kubenet                              ##"
     echo "## 05 - AKS cluster with Bring Your Own CNI                   ##"
-    echo "################################################################"
-    echo "## NETWORK POLICIES                                           ##"
+    echo "## ---------------------------------------------------------- ##"
+    echo "##                      NETWORK POLICIES                      ##"
+    echo "## ---------------------------------------------------------- ##"
     echo "## 06 - AKS cluster with Azure CNI Node Subnet and Azure NPM  ##"
     echo "## 07 - AKS cluster with Azure CNI Overlay and Calico         ##"
     echo "## 08 - AKS cluster with Azure CNI Overlay and Cilium         ##"
-    echo "################################################################"
-    echo "## AUTHENTICATION                                             ##"
-    echo "## 09 - AKS cluster with AAD and K8s RBAC                     ##"
+    echo "## ---------------------------------------------------------- ##"
+    echo "##                       AUTHENTICATION                       ##"
+    echo "## ---------------------------------------------------------- ##"
+    echo "## 09 - AKS cluster with AAD and Kubernetes RBAC              ##"
     echo "## 10 - AKS cluster with AAD and Azure RBAC                   ##"
-    echo "################################################################"
-    echo "## ADDONS                                                     ##"
+    echo "## ---------------------------------------------------------- ##"
+    echo "##                           ADDONS                           ##"
+    echo "## ---------------------------------------------------------- ##"
     echo "## 11 - AKS cluster with Azure Defender and Azure Policy      ##"
     echo "## 12 - AKS cluster with Azure Monitoring                     ##"
-    echo "## 13 - AKS cluster with Azure Keyvault Secret Provider Addon ##"
+    echo "## 13 - AKS cluster with Azure KeyVault Secret Provider Addon ##"
     echo "## 14 - AKS cluster with AGIC Addon                           ##"
     echo "## 15 - AKS cluster with Keda Addon                           ##"
     echo "## 16 - AKS cluster with Virtual Node Addon                   ##"
     echo "## 17 - AKS cluster with Istio-based Service Mesh Addon       ##"
-    echo "################################################################"
-    echo "## EXTENSIONS                                                 ##"
+    echo "## ---------------------------------------------------------- ##"
+    echo "##                         EXTENSIONS                         ##"
+    echo "## ---------------------------------------------------------- ##"
     echo "## 18 - AKS cluster with Dapr Extension                       ##"
     echo "## 19 - AKS cluster with Flux Extension                       ##"
-    echo "################################################################"
-    echo "## OTHERS                                                     ##"
+    echo "## ---------------------------------------------------------- ##"
+    echo "##                           OTHERS                           ##"
+    echo "## ---------------------------------------------------------- ##"
     echo "## 20 - AKS cluster with App Routing                          ##"
     echo "## 21 - AKS cluster with Azure Linux Nodes                    ##"
     echo "## 22 - AKS cluster with Zone Aligned Node Pools              ##"
     echo "## 23 - AKS cluster with Windows Node Pool                    ##"
     echo "## 24 - AKS cluster with Node Autoprovisioning                ##"
     echo "## 25 - AKS cluster with Network Observability                ##"
-    echo "################################################################"
-    echo "## PRIVATE CLUSTERS                                           ##"
+    echo "## ---------------------------------------------------------- ##"
+    echo "##                      PRIVATE CLUSTERS                      ##"
+    echo "## ---------------------------------------------------------- ##"
     echo "## 30 - Private AKS cluster                                   ##"
     echo "## 31 - Private AKS cluster with api vnet integration         ##"
+    echo "## ---------------------------------------------------------- ##"
     echo "################################################################"
 
     while true; do
@@ -653,7 +665,9 @@ createVM() {
 
 header() {
     echo "################################################################"
-    echo "############    Azure Kubernetes Service helper     ############"
+    echo "##                                                            ##"
+    echo "##              Azure Kubernetes Service Helper               ##"
+    echo "##                                                            ##"
     echo "################################################################"
 }
 
@@ -662,7 +676,7 @@ main() {
     while true; do
         header
         echo "## 01 - Create AKS cluster from templates                     ##"
-        echo "## 02 - Create custom AKS cluster   (WORK IN PROGRESS)        ##"
+        echo "## 02 - Create custom AKS cluster                             ##"
         echo "## 03 - List AKS clusters                                     ##"
         echo "## 04 - Delete AKS cluster                                    ##"
         echo "## 05 - Delete resource group (aks-rg)                        ##"

@@ -100,7 +100,7 @@ aksVersion() {
     echo "################################################################"
 
     read -p "Enter the AKS version: " INDEX
-    aksVersion=${versions[INDEX]}
+    aksVersion=${versions[INDEX]} ## TODO Should fail when INDEX is out of range
 }
 
 aksNetworkPlugin() {
@@ -435,12 +435,16 @@ createPublicAKSClusterKubenet() {
     createPublicAKSClusterWithRGAndVNET "--pod-cidr $podCIDR"
 }
 
-createPublicAKSClusterBringYourOwnCNI() { ## TODO
+createPublicAKSClusterBringYourOwnCNI() {
     echo "Creating AKS cluster with Bring Your Own CNI"
+    networkPlugin="none"
+    createPublicAKSClusterWithRGAndVNET
 }
 
-createPublicAKSClusterAzureCNINodeSubnetAzureNPM() { ## TODO
-    echo "Creating AKS cluster with Bring Your Own CNI"
+createPublicAKSClusterAzureCNINodeSubnetAzureNPM() {
+    echo "Creating AKS cluster with Azure CNI Node Subnet and Azure NPM"
+    networkPolicy="azure"
+    createPublicAKSClusterWithRGAndVNET
 }
 
 createPublicAKSClusterAzureCNIOverlayCalico() {

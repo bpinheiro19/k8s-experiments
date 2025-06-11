@@ -48,6 +48,7 @@ publicIp="myPublicIp"
 keyVaultName="akskeyvault$date"
 grafana="aksgrafana"
 monitorWorkspace="aksmonitor"
+acr="bpacr$date"
 
 ############################################
 ################ Functions #################
@@ -104,7 +105,7 @@ aksVersion() {
 }
 
 aksNetworkPlugin() {
-    
+
     while true; do
         header
         echo "##############           Network Plugin        #################"
@@ -257,15 +258,19 @@ aksTemplates() {
     echo "## ---------------------------------------------------------- ##"
     echo "## 18 - AKS cluster with Dapr Extension                       ##"
     echo "## 19 - AKS cluster with Flux Extension                       ##"
+    echo "## 20 - AKS cluster with Azure Container Storage Extension    ##"
+    echo "## 21 - AKS cluster with Azure Machine Learning Extension     ##"
+    echo "## 22 - AKS cluster with Azure Backup Extension               ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                           OTHERS                           ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 20 - AKS cluster with App Routing                          ##"
-    echo "## 21 - AKS cluster with Azure Linux Nodes                    ##"
-    echo "## 22 - AKS cluster with Zone Aligned Node Pools              ##"
-    echo "## 23 - AKS cluster with Windows Node Pool                    ##"
-    echo "## 24 - AKS cluster with Node Autoprovisioning                ##"
-    echo "## 25 - AKS cluster with Network Observability                ##"
+    echo "## 23 - AKS cluster with App Routing                          ##"
+    echo "## 24 - AKS cluster with Azure Linux Nodes                    ##"
+    echo "## 25 - AKS cluster with Zone Aligned Node Pools              ##"
+    echo "## 26 - AKS cluster with Windows Node Pool                    ##"
+    echo "## 27 - AKS cluster with Node Autoprovisioning                ##"
+    echo "## 28 - AKS cluster with Network Observability                ##"
+    echo "## 29 - AKS cluster with ACR                                  ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
@@ -356,27 +361,43 @@ aksTemplates() {
             break
             ;;
         20)
-            createPublicAKSClusterAppRouting
+            createPublicAKSClusterAzureContainerStorage
             break
             ;;
         21)
-            createPublicAKSClusterAzureLinux
+            createPublicAKSClusterAzureMachineLearning
             break
             ;;
         22)
-            createPublicAKSClusterZoneAligned
+            createPublicAKSClusterAzureBackup
             break
             ;;
         23)
-            createPublicAKSClusterWindowsNodePool
+            createPublicAKSClusterAppRouting
             break
             ;;
         24)
-            createPublicAKSClusterNAP
+            createPublicAKSClusterAzureLinux
             break
             ;;
         25)
+            createPublicAKSClusterZoneAligned
+            break
+            ;;
+        26)
+            createPublicAKSClusterWindowsNodePool
+            break
+            ;;
+        27)
+            createPublicAKSClusterNAP
+            break
+            ;;
+        28)
             createPublicAKSClusterNetworkObservability
+            break
+            ;;
+        29)
+            createPublicAKSWithACR
             break
             ;;
         30)
@@ -550,6 +571,18 @@ createPublicAKSClusterFlux() {
     az k8s-configuration flux create -g $rg -c $aks -n cluster-config --namespace cluster-config -t managedClusters --scope cluster -u https://github.com/Azure/gitops-flux2-kustomize-helm-mt --branch main --kustomization name=infra path=./infrastructure prune=true --kustomization name=apps path=./apps/staging prune=true dependsOn=\["infra"\]
 }
 
+createPublicAKSClusterAzureContainerStorage() { ## TODO
+    echo "Creating AKS cluster with Azure Container Storage extension"
+}
+
+createPublicAKSClusterAzureMachineLearning() { ## TODO
+    echo "Creating AKS cluster with Azure Machine Learning extension"
+}
+
+createPublicAKSClusterAzureBackup() { ## TODO
+    echo "Creating AKS cluster with Azure Backup extension"
+}
+
 createPublicAKSClusterAppRouting() {
     echo "Creating AKS cluster with app routing addon"
     createPublicAKSClusterWithRGAndVNET "--enable-app-routing"
@@ -601,6 +634,11 @@ createPublicAKSClusterNetworkObservability() {
     monitorWorkspaceId=$(az resource show -g $rg --name $monitorWorkspace --resource-type "Microsoft.Monitor/accounts" --query id --output tsv)
 
     createAKSCluster "$overlay --enable-acns --enable-azure-monitor-metrics --azure-monitor-workspace-resource-id $monitorWorkspaceId --grafana-resource-id $grafanaId"
+}
+
+
+createPublicAKSWithACR() { ## TODO
+    echo "Creating AKS cluster with Azure Container Registry"
 }
 
 createAKSCluster() {

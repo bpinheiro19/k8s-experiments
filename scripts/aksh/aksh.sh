@@ -636,9 +636,22 @@ createPublicAKSClusterNetworkObservability() {
     createAKSCluster "$overlay --enable-acns --enable-azure-monitor-metrics --azure-monitor-workspace-resource-id $monitorWorkspaceId --grafana-resource-id $grafanaId"
 }
 
+createACR(){
+    echo "Creating the Azure Container Registry"
+    az acr create --name $acr --resource-group $rg --sku premium -o none
+}
 
-createPublicAKSWithACR() { ## TODO
-    echo "Creating AKS cluster with Azure Container Registry"
+createPublicAKSWithACR() {
+    echo "Starting creation of AKS cluster with Azure Container Registry"
+    createRG
+    createVNET
+    createACR
+
+    echo "Importing nginx image to ACR: $acr"
+    az acr import --name $acr --source docker.io/library/nginx:latest --image nginx:v1
+
+    createAKSCluster "--attach-acr $acr"
+    echo "Create pod with ACR image: kubectl run my-nginx --image=$acr.azurecr.io/nginx:v1"
 }
 
 createAKSCluster() {

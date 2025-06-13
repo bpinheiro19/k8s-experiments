@@ -571,8 +571,11 @@ createPublicAKSClusterFlux() {
     az k8s-configuration flux create -g $rg -c $aks -n cluster-config --namespace cluster-config -t managedClusters --scope cluster -u https://github.com/Azure/gitops-flux2-kustomize-helm-mt --branch main --kustomization name=infra path=./infrastructure prune=true --kustomization name=apps path=./apps/staging prune=true dependsOn=\["infra"\]
 }
 
-createPublicAKSClusterAzureContainerStorage() { ## TODO
+createPublicAKSClusterAzureContainerStorage() {
     echo "Creating AKS cluster with Azure Container Storage extension"
+    nodeCount=3
+    sku="Standard_D8s_v5"
+    createPublicAKSClusterWithRGAndVNET "--enable-azure-container-storage azureDisk"
 }
 
 createPublicAKSClusterAzureMachineLearning() { ## TODO

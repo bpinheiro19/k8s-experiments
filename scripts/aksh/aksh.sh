@@ -6,6 +6,7 @@ date="$(date +%s)"
 rg="aks-rg"
 location="swedencentral"
 extraArgs=""
+output="none"
 
 #AKS
 aks="aks$date"
@@ -417,14 +418,14 @@ aksTemplates() {
 ############## Resource Group #############
 createRG() {
     echo "Creating the resource group"
-    az group create -n $rg -l $location -o none
+    az group create -n $rg -l $location -o $output
 }
 
 ###########################################
 ############# Virtual Network #############
 createVNET() {
     echo "Creating virtual network and subnets"
-    az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $aksSubnet --subnet-prefixes $aksSubnetAddr -l $location -o none
+    az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $aksSubnet --subnet-prefixes $aksSubnetAddr -l $location -o $output
 }
 
 ###########################################
@@ -444,7 +445,7 @@ createPublicAKSClusterAzureCNIDynamicIPAllocation() {
     createRG
     createVNET
 
-    az network vnet subnet create -g $rg --vnet-name $vnet --name $podSubnet --address-prefixes $podSubnetAddr -o none
+    az network vnet subnet create -g $rg --vnet-name $vnet --name $podSubnet --address-prefixes $podSubnetAddr -o $output
 
     podSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $podSubnet --query id -o tsv)
     createAKSCluster "--pod-subnet-id $podSubnetId"
@@ -506,20 +507,20 @@ createPublicAKSClusterKeyVault() {
     createPublicAKSClusterWithRGAndVNET "--enable-addons azure-keyvault-secrets-provider"
 
     echo "Creating a new Azure Key Vault"
-    az keyvault create --name $keyVaultName --resource-group $rg --location $location --enable-rbac-authorization -o none
+    az keyvault create --name $keyVaultName --resource-group $rg --location $location --enable-rbac-authorization -o $output
 
-    az aks connection create keyvault --connection keyvaultconnection$date --resource-group $rg --name $aks --target-resource-group $rg --vault $keyVaultName --enable-csi --client-type none -o none
+    az aks connection create keyvault --connection keyvaultconnection$date --resource-group $rg --name $aks --target-resource-group $rg --vault $keyVaultName --enable-csi --client-type none -o $output
 }
 
 createAppGw() {
     echo "Creating Application Gateway Subnet"
-    az network vnet subnet create -g $rg --vnet-name $vnet --name $appGwSubnet --address-prefixes $appGwSubnetAddr
+    az network vnet subnet create -g $rg --vnet-name $vnet --name $appGwSubnet --address-prefixes $appGwSubnetAddr -o $output
 
     echo "Creating Public IP"
-    az network public-ip create --name $publicIp --resource-group $rg --allocation-method Static --sku Standard
+    az network public-ip create --name $publicIp --resource-group $rg --allocation-method Static --sku Standard -o $output
 
     echo "Creating Application Gateway"
-    az network application-gateway create --name $appGw --resource-group $rg --sku Standard_v2 --public-ip-address $publicIp --vnet-name $vnet --subnet $appGwSubnet --priority 100
+    az network application-gateway create --name $appGw --resource-group $rg --sku Standard_v2 --public-ip-address $publicIp --vnet-name $vnet --subnet $appGwSubnet --priority 100 -o $output
 }
 
 createPublicAKSClusterAGIC() {
@@ -560,7 +561,7 @@ createPublicAKSClusterDapr() {
     createPublicAKSClusterWithRGAndVNET "--node-count 3"
 
     echo "Installing Dapr extension"
-    az k8s-extension create --cluster-type managedClusters --cluster-name $aks --resource-group $rg --name dapr --extension-type Microsoft.Dapr --auto-upgrade-minor-version true -o none
+    az k8s-extension create --cluster-type managedClusters --cluster-name $aks --resource-group $rg --name dapr --extension-type Microsoft.Dapr --auto-upgrade-minor-version true -o $output
 }
 
 createPublicAKSClusterFlux() {
@@ -628,7 +629,7 @@ createPublicAKSClusterNetworkObservability() {
     createVNET
 
     echo "Creating Azure Monitor Workspace"
-    az resource create -g $rg --namespace microsoft.monitor --resource-type accounts --name $monitorWorkspace --location $location --properties '{}' -o none
+    az resource create -g $rg --namespace microsoft.monitor --resource-type accounts --name $monitorWorkspace --location $location --properties '{}' -o $output
 
     echo "Creating Grafana Instance"
     az grafana create --name $grafana -g $rg
@@ -639,9 +640,9 @@ createPublicAKSClusterNetworkObservability() {
     createAKSCluster "$overlay --enable-acns --enable-azure-monitor-metrics --azure-monitor-workspace-resource-id $monitorWorkspaceId --grafana-resource-id $grafanaId"
 }
 
-createACR(){
+createACR() {
     echo "Creating the Azure Container Registry"
-    az acr create --name $acr --resource-group $rg --sku premium -o none
+    az acr create --name $acr --resource-group $rg --sku premium -o $output
 }
 
 createPublicAKSWithACR() {
@@ -680,7 +681,7 @@ createPrivateAKSClusterAPIIntegration() {
     createRG
     createVNET
 
-    az network vnet subnet create -g $rg --vnet-name $vnet --name "apiserver-subnet" --delegations Microsoft.ContainerService/managedClusters --address-prefixes $apiSubnetAddr -o none
+    az network vnet subnet create -g $rg --vnet-name $vnet --name "apiserver-subnet" --delegations Microsoft.ContainerService/managedClusters --address-prefixes $apiSubnetAddr -o $output
     apiSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $apiSubnet --query id -o tsv)
     aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
 
@@ -718,7 +719,7 @@ createStandaloneVM() {
 
 createVM() {
     echo "Creating Virtual Machine"
-    az vm create -g $rg -n $vm -l $location --image $vmImage --vnet-name $vnet --admin-username $adminUser --ssh-key-value $sshLocation -o none
+    az vm create -g $rg -n $vm -l $location --image $vmImage --vnet-name $vnet --admin-username $adminUser --ssh-key-value $sshLocation -o $output
 }
 
 header() {

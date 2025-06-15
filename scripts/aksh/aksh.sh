@@ -19,6 +19,7 @@ podCIDR=172.16.0.0/16
 dnsIp=10.0.241.10
 sku="Standard_D2s_v5"
 nodeCount=1
+outboundType="loadBalancer"
 overlay="--network-plugin-mode overlay --pod-cidr $podCIDR"
 
 #VNET
@@ -44,6 +45,16 @@ appGw="myApplicationGateway"
 appGwSubnet="appgw-subnet"
 appGwSubnetAddr="10.0.1.0/24"
 publicIp="myPublicIp"
+
+#Firewall
+firewall="aks-firewall$date"
+firewallPublicIP="firewall-public-ip$date"
+firewallSubnet="AzureFirewallSubnet"
+firewallSubnetAddr=10.0.248.0/24
+firewallIPConfig="firewall-config"
+firewalRouteTable="firewall-route-table$date"
+firewallRouteName="firewall-route"
+firewallRouteInternet="firewall-route-internet"
 
 #Others
 keyVaultName="akskeyvault$date"
@@ -276,7 +287,8 @@ aksTemplates() {
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
     echo "## 30 - Private AKS cluster                                   ##"
-    echo "## 31 - Private AKS cluster with api vnet integration         ##"
+    echo "## 31 - Private AKS cluster with API VNet Integration         ##"
+    echo "## 32 - Private AKS cluster with User Defined Routing         ##"
     echo "## ---------------------------------------------------------- ##"
     echo "################################################################"
 
@@ -407,6 +419,10 @@ aksTemplates() {
             ;;
         31)
             createPrivateAKSClusterAPIIntegration
+            break
+            ;;
+        32)
+            createPrivateAKSClusterUDR
             break
             ;;
         esac
@@ -661,7 +677,7 @@ createPublicAKSWithACR() {
 createAKSCluster() {
     aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
     echo "Creating AKS Cluster"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount -o none $1
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount --outbound-type $outboundType -o $output $1
 
     echo "AKS Cluster created successfully"
     echo "Download cluster credentials: az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
@@ -690,12 +706,61 @@ createPrivateAKSClusterAPIIntegration() {
     identityResourceId=$(az identity list -g aks-rg --output json --query '[].id' -o tsv)
     sleep 10
 
-    az role assignment create --scope $apiSubnetId --role "Network Contributor" --assignee {$identityId} -o none
-    az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $identityId -o none
+    az role assignment create --scope $apiSubnetId --role "Network Contributor" --assignee {$identityId} -o $output
+    az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $identityId -o $output
 
-    createAKSCluster "--ssh-access disabled --enable-private-cluster --disable-public-fqdn --enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId --assign-identity $identityResourceId "
+    createPrivateAKSCluster "--enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId --assign-identity $identityResourceId "
 
     createVM
+}
+
+createAzureFirewall() {
+    az network vnet subnet create -g $rg --vnet-name $vnet --name $firewallSubnet --address-prefix $firewallSubnetAddr -o $output
+    
+    echo "Creating Public IP"
+    az network public-ip create -g $rg -n $firewallPublicIP -l $location --sku "Standard" -o $output
+
+    echo "Creating Azure Firewall"
+    az network firewall create -g $rg -n $firewall -l $location --enable-dns-proxy true -o $output
+
+    az network firewall ip-config create -g $rg -f $firewall -n $firewallIPConfig --public-ip-address $firewallPublicIP --vnet-name $vnet -o $output
+
+    echo "Creating Network rules in the firewall"
+    az network firewall network-rule create -g $rg -f $firewall --collection-name 'aksfwnr' -n 'apiudp' --protocols 'UDP' --source-addresses '*' --destination-addresses "AzureCloud.$location" --destination-ports 1194 --action allow --priority 100 -o $output
+    az network firewall network-rule create -g $rg -f $firewall --collection-name 'aksfwnr' -n 'apitcp' --protocols 'TCP' --source-addresses '*' --destination-addresses "AzureCloud.$location" --destination-ports 9000 -o $output
+    az network firewall network-rule create -g $rg -f $firewall --collection-name 'aksfwnr' -n 'time' --protocols 'UDP' --source-addresses '*' --destination-fqdns 'ntp.ubuntu.com' --destination-ports 123 -o $output
+
+    echo "Creating Application rules in the firewall"
+    az network firewall application-rule create -g $rg -f $firewall --collection-name 'aksfwar' -n 'fqdn' --source-addresses '*' --protocols 'http=80' 'https=443' --fqdn-tags "AzureKubernetesService" --action allow --priority 100 -o $output
+    az network firewall application-rule create -g $rg -f $firewall --collection-name 'aksfwarweb' -n 'storage' --source-addresses $aksSubnetAddr --protocols 'https=443' --target-fqdns '*.blob.storage.azure.net' '*.blob.core.windows.net' --action allow --priority 101 -o $output
+    az network firewall application-rule create -g $rg -f $firewall --collection-name 'aksfwarweb' -n 'website' --source-addresses $aksSubnetAddr --protocols 'https=443' --target-fqdns 'ghcr.io' '*.docker.io' '*.docker.com' '*.githubusercontent.com' -o $output
+}
+
+createPrivateAKSClusterUDR() {
+    echo "Starting creation of private AKS Cluster with User Defined Routing"
+    nodeCount=2
+    outboundType="userDefinedRouting"
+
+    createRG
+    createVNET
+    createAzureFirewall
+
+    fwPublicIP=$(az network public-ip show -g $rg -n $firewallPublicIP --query "ipAddress" -o tsv)
+    fwPrivateIP=$(az network firewall show -g $rg -n $firewall --query "ipConfigurations[0].privateIPAddress" -o tsv)
+
+    az network vnet update -g $rg --name $vnet --dns-servers $fwPrivateIP -o $output
+
+    az network route-table create -g $rg -l $location --name $firewalRouteTable -o $output
+    az network route-table route create -g $rg --name $firewallRouteName --route-table-name $firewalRouteTable --address-prefix 0.0.0.0/0 --next-hop-type VirtualAppliance --next-hop-ip-address $fwPrivateIP -o $output
+    az network route-table route create -g $rg --name $firewallRouteInternet --route-table-name $firewalRouteTable --address-prefix $fwPublicIP/32 --next-hop-type Internet -o $output
+    az network vnet subnet update -g $rg --vnet-name $vnet --name $aksSubnet --route-table $firewalRouteTable -o $output
+
+    createPrivateAKSCluster
+    createVM
+}
+
+createPrivateAKSCluster(){
+    createAKSCluster "--ssh-access disabled --enable-private-cluster --disable-public-fqdn $1"
 }
 
 createPrivateAKSClusterWithRGAndVnet() {
@@ -703,7 +768,7 @@ createPrivateAKSClusterWithRGAndVnet() {
     createRG
     createVNET
 
-    createAKSCluster "--ssh-access disabled --enable-private-cluster --disable-public-fqdn $1"
+    createPrivateAKSCluster "$1"
 
     createVM
 }

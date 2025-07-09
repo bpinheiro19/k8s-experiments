@@ -1,11 +1,12 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Release.Name }}-pvc-azurefile
+  name: pvc-azurefile-dynamic
+  namespace: {{ .Values.namespace }}
 spec:
   accessModes:
     - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
-  storageClassName: {{ .Release.Name }}-sc-azurefile
+  storageClassName: sc-azurefile-dynamic

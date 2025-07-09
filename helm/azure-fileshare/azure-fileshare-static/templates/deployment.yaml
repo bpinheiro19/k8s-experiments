@@ -1,7 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-nginx-azurefile
+  name: nginx-azurefile-static
+  namespace: {{ .Values.namespace }}
   labels:
     app: app
 spec:
@@ -27,4 +28,4 @@ spec:
       volumes:
         - name: persistent-storage
           persistentVolumeClaim:
-            claimName: {{ .Release.Name }}-pvc-azurefile
+            claimName: pvc-azurefile-static

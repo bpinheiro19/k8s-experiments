@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  annotations:
+    pv.kubernetes.io/provisioned-by: file.csi.azure.com
+  name: pv-azurefile-static
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: azurefile-csi
+  csi:
+    driver: file.csi.azure.com
+    volumeHandle: {{ .Values.resourceGroupName}}{{.Values.storageAccountName}}{{.Values.shareName }}
+    volumeAttributes:
+      shareName: {{ .Values.shareName }}
+      resourceGroup: {{ .Values.resourceGroupName }}
+      storageAccount: {{ .Values.storageAccountName }}
+      # Identity can be used instead of secret
+      #AzureStorageAuthType: msi  # key, sas, msi, spn
+      #azureStorageIdentityResourceID: <kubelet clientId>
+      secretName: azure-fileshare-secret
+  mountOptions:
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=0
+    - gid=0
+    - mfsymlinks
+    - cache=strict
+    - nosharesock
+    - nobrl  # disable sending byte range lock requests to the server and for applications which have challenges with posix locks

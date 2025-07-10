@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-blob-dynamic
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+  - ReadWriteMany
+  storageClassName: sc-blob-dynamic
+  resources:
+    requests:
+      storage: 5Gi

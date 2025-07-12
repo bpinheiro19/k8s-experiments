@@ -1,0 +1,5 @@
+namespace: "default"
+replicateCount: 1
+containerName: "blob"
+storageAccountName: "mystorageaccount"
+resourceGroupName: "rg"

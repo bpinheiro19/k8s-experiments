@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-blob-static
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: app
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - image: nginx:latest
+        name: nginx-blob
+        command:
+          - "/bin/bash"
+          - "-c"
+          - set -euo pipefail; while true; do echo $(date) >> /mnt/blob/outfile; sleep 1; done
+        volumeMounts:
+        - name: blob-storage
+          mountPath: "/mnt/blob"
+      volumes:
+        - name: blob-storage
+          persistentVolumeClaim:
+            claimName: pvc-blob-static

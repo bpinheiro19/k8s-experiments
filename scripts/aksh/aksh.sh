@@ -56,11 +56,16 @@ firewalRouteTable="firewall-route-table$date"
 firewallRouteName="firewall-route"
 firewallRouteInternet="firewall-route-internet"
 
+#Backup
+blobcontainer="backupcontainer"
+storageaccount="backupsa$date"
+backupvault="backupVault$date"
+
 #Others
 keyVaultName="akskeyvault$date"
 grafana="aksgrafana"
 monitorWorkspace="aksmonitor"
-acr="bpacr$date"
+acr="aksacr$date"
 
 ############################################
 ################ Functions #################
@@ -76,7 +81,6 @@ aksCustom() {
     aksAddons
 
     createPublicAKSClusterWithRGAndVNET "$extraArgs"
-
 }
 
 aksPublicPrivate() {
@@ -117,7 +121,6 @@ aksVersion() {
 }
 
 aksNetworkPlugin() {
-
     while true; do
         header
         echo "##############           Network Plugin        #################"
@@ -147,7 +150,6 @@ aksNetworkPlugin() {
 }
 
 aksNetworkPolicy() {
-
     while true; do
         header
         echo "##############           Network Policy        #################"
@@ -179,11 +181,9 @@ aksNetworkPolicy() {
             ;;
         esac
     done
-
 }
 
 aksAddons() {
-
     while true; do
         header
         echo "##############             Addons              #################"
@@ -599,8 +599,28 @@ createPublicAKSClusterAzureMachineLearning() { ## TODO
     echo "Creating AKS cluster with Azure Machine Learning extension"
 }
 
-createPublicAKSClusterAzureBackup() { ## TODO
-    echo "Creating AKS cluster with Azure Backup extension"
+createPublicAKSClusterAzureBackup() {
+
+    echo "Creating AKS cluster"
+    createPublicAKSClusterWithRGAndVNET
+
+    subscriptionId="$(az account show --query id --output tsv)"
+
+    echo "Creating Azure Backup Vault"
+    az dataprotection backup-vault create --resource-group $rg --vault-name $backupvault --location $location --type SystemAssigned --storage-settings datastore-type="VaultStore" type="LocallyRedundant"
+
+    echo "Creating Azure Storage Account and Container"
+    az storage account create --name $storageaccount --resource-group $rg --location $location --sku Standard_LRS
+    az storage container create --name $blobcontainer --account-name $storageaccount --auth-mode login
+
+    echo "Installing Azure Backup extension"
+    az k8s-extension create --name azure-aks-backup --extension-type microsoft.dataprotection.kubernetes --scope cluster --cluster-type managedClusters --cluster-name $aks --resource-group $rg --release-train stable --configuration-settings blobContainer=$blobcontainer storageAccount=$storageaccount storageAccountResourceGroup=$rg storageAccountSubscriptionId=$subscriptionId
+
+    az role assignment create --assignee-object-id $(az k8s-extension show --name azure-aks-backup --cluster-name $aks --resource-group $rg --cluster-type managedClusters --query aksAssignedIdentity.principalId --output tsv) --role 'Storage Blob Data Contributor' --scope /subscriptions/$subscriptionId/resourceGroups/$rg/providers/Microsoft.Storage/storageAccounts/$storageaccount
+
+    az aks trustedaccess rolebinding create --cluster-name $aks --name backuprolebinding --resource-group $rg --roles Microsoft.DataProtection/backupVaults/backup-operator --source-resource-id /subscriptions/$subscriptionId/resourceGroups/$rg/providers/Microsoft.DataProtection/BackupVaults/$backupvault
+    
+    echo "Azure Backup extension installed successfully"
 }
 
 createPublicAKSClusterAppRouting() {
@@ -796,7 +816,6 @@ header() {
 }
 
 main() {
-
     while true; do
         header
         echo "## 01 - Create AKS cluster from templates                     ##"

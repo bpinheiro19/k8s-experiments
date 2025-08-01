@@ -4,7 +4,7 @@
 ################ Variables #################
 date="$(date +%s)"
 rg="aks-rg"
-location="swedencentral"
+location="uksouth"
 extraArgs=""
 output="none"
 
@@ -595,8 +595,12 @@ createPublicAKSClusterAzureContainerStorage() {
     createPublicAKSClusterWithRGAndVNET "--enable-azure-container-storage azureDisk"
 }
 
-createPublicAKSClusterAzureMachineLearning() { ## TODO
+createPublicAKSClusterAzureMachineLearning() {
     echo "Creating AKS cluster with Azure Machine Learning extension"
+    createPublicAKSClusterWithRGAndVNET
+    
+    echo "Installing Azure Machine Learning extension"
+    az k8s-extension create --name azuremachinelearning --extension-type Microsoft.AzureML.Kubernetes --config enableTraining=True enableInference=True inferenceRouterServiceType=LoadBalancer allowInsecureConnections=True InferenceRouterHA=False --cluster-type managedClusters --cluster-name $aks --resource-group $rg --scope cluster
 }
 
 createPublicAKSClusterAzureBackup() {

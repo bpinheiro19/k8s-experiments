@@ -247,48 +247,49 @@ aksTemplates() {
     echo "## ---------------------------------------------------------- ##"
     echo "##                      NETWORK POLICIES                      ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 06 - AKS cluster with Azure CNI Node Subnet and Azure NPM  ##"
-    echo "## 07 - AKS cluster with Azure CNI Overlay and Calico         ##"
-    echo "## 08 - AKS cluster with Azure CNI Overlay and Cilium         ##"
+    echo "## 10 - AKS cluster with Azure CNI Node Subnet and Azure NPM  ##"
+    echo "## 11 - AKS cluster with Azure CNI Overlay and Calico         ##"
+    echo "## 12 - AKS cluster with Azure CNI Overlay and Cilium         ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                       AUTHENTICATION                       ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 09 - AKS cluster with AAD and Kubernetes RBAC              ##"
-    echo "## 10 - AKS cluster with AAD and Azure RBAC                   ##"
+    echo "## 20 - AKS cluster with AAD and Kubernetes RBAC              ##"
+    echo "## 21 - AKS cluster with AAD and Azure RBAC                   ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                           ADDONS                           ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 11 - AKS cluster with Azure Defender and Azure Policy      ##"
-    echo "## 12 - AKS cluster with Azure Monitoring                     ##"
-    echo "## 13 - AKS cluster with Azure KeyVault Secret Provider Addon ##"
-    echo "## 14 - AKS cluster with AGIC Addon                           ##"
-    echo "## 15 - AKS cluster with Keda Addon                           ##"
-    echo "## 16 - AKS cluster with Virtual Node Addon                   ##"
-    echo "## 17 - AKS cluster with Istio-based Service Mesh Addon       ##"
+    echo "## 30 - AKS cluster with Azure Defender and Azure Policy      ##"
+    echo "## 31 - AKS cluster with Azure Monitoring                     ##"
+    echo "## 32 - AKS cluster with Azure KeyVault Secret Provider Addon ##"
+    echo "## 33 - AKS cluster with AGIC Addon                           ##"
+    echo "## 34 - AKS cluster with Keda Addon                           ##"
+    echo "## 35 - AKS cluster with Virtual Node Addon                   ##"
+    echo "## 36 - AKS cluster with Istio-based Service Mesh Addon       ##"
+    echo "## 37 - AKS cluster with Cost Analysis Addon                  ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                         EXTENSIONS                         ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 18 - AKS cluster with Dapr Extension                       ##"
-    echo "## 19 - AKS cluster with Flux Extension                       ##"
-    echo "## 20 - AKS cluster with Azure Container Storage Extension    ##"
-    echo "## 21 - AKS cluster with Azure Machine Learning Extension     ##"
-    echo "## 22 - AKS cluster with Azure Backup Extension               ##"
+    echo "## 40 - AKS cluster with Dapr Extension                       ##"
+    echo "## 41 - AKS cluster with Flux Extension                       ##"
+    echo "## 42 - AKS cluster with Azure Container Storage Extension    ##"
+    echo "## 43 - AKS cluster with Azure Machine Learning Extension     ##"
+    echo "## 44 - AKS cluster with Azure Backup Extension               ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                           OTHERS                           ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 23 - AKS cluster with App Routing                          ##"
-    echo "## 24 - AKS cluster with Azure Linux Nodes                    ##"
-    echo "## 25 - AKS cluster with Zone Aligned Node Pools              ##"
-    echo "## 26 - AKS cluster with Windows Node Pool                    ##"
-    echo "## 27 - AKS cluster with Node Autoprovisioning                ##"
-    echo "## 28 - AKS cluster with Network Observability                ##"
-    echo "## 29 - AKS cluster with ACR                                  ##"
+    echo "## 50 - AKS cluster with App Routing                          ##"
+    echo "## 51 - AKS cluster with Azure Linux Nodes                    ##"
+    echo "## 52 - AKS cluster with Zone Aligned Node Pools              ##"
+    echo "## 53 - AKS cluster with Windows Node Pool                    ##"
+    echo "## 54 - AKS cluster with Node Autoprovisioning                ##"
+    echo "## 55 - AKS cluster with Network Observability                ##"
+    echo "## 56 - AKS cluster with ACR                                  ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 30 - Private AKS cluster                                   ##"
-    echo "## 31 - Private AKS cluster with API VNet Integration         ##"
-    echo "## 32 - Private AKS cluster with User Defined Routing         ##"
+    echo "## 60 - Private AKS cluster                                   ##"
+    echo "## 61 - Private AKS cluster with API VNet Integration         ##"
+    echo "## 62 - Private AKS cluster with User Defined Routing         ##"
     echo "## ---------------------------------------------------------- ##"
     echo "################################################################"
 
@@ -297,6 +298,7 @@ aksTemplates() {
         read -p "Option: " opt
 
         case $opt in
+        ## NETWORK PLUGINS ##
         1)
             createPublicAKSClusterAzureCNIOverlay
             break
@@ -317,111 +319,121 @@ aksTemplates() {
             createPublicAKSClusterBringYourOwnCNI
             break
             ;;
-        6)
+        ## NETWORK POLICIES ##
+        10)
             createPublicAKSClusterAzureCNINodeSubnetAzureNPM
             break
             ;;
-        7)
+        11)
             createPublicAKSClusterAzureCNIOverlayCalico
             break
             ;;
-        8)
+        12)
             createPublicAKSClusterAzureCNIOverlayCilium
             break
             ;;
-        9)
+        ## AUTHENTICATION ##
+        20)
             createPublicAKSClusterAADK8sRbac
             break
             ;;
-        10)
+        21)
             createPublicAKSClusterAADAzureRbac
             break
             ;;
-        11)
+        ## ADDONS ##
+        30)
             createPublicAKSClusterPolicyDefender
             break
             ;;
-        12)
+        31)
             createPublicAKSClusterAzureMonitoring
             break
             ;;
-        13)
+        32)
             createPublicAKSClusterKeyVault
             break
             ;;
-        14)
+        33 )
             createPublicAKSClusterAGIC
             break
             ;;
-        15)
+        34)
             createPublicAKSClusterKeda
             break
             ;;
-        16)
+        35)
             createPublicAKSClusterVirtualNode
             break
             ;;
-        17)
+        36)
             createPublicAKSClusterIstioServiceMesh
             break
             ;;
-        18)
+        37)
+            createPublicAKSClusterCostAnalysis
+            break
+            ;;
+        ## EXTENSIONS ##
+        40)
             createPublicAKSClusterDapr
             break
             ;;
-        19)
+        41)
             createPublicAKSClusterFlux
             break
             ;;
-        20)
+        42)
             createPublicAKSClusterAzureContainerStorage
             break
             ;;
-        21)
+        43)
             createPublicAKSClusterAzureMachineLearning
             break
             ;;
-        22)
+        44)
             createPublicAKSClusterAzureBackup
             break
             ;;
-        23)
+        ## OTHERS ##
+        50)
             createPublicAKSClusterAppRouting
             break
             ;;
-        24)
+        51)
             createPublicAKSClusterAzureLinux
             break
             ;;
-        25)
+        52)
             createPublicAKSClusterZoneAligned
             break
             ;;
-        26)
+        53)
             createPublicAKSClusterWindowsNodePool
             break
             ;;
-        27)
+        54)
             createPublicAKSClusterNAP
             break
             ;;
-        28)
+        55)
             createPublicAKSClusterNetworkObservability
             break
             ;;
-        29)
+        56)
             createPublicAKSWithACR
             break
             ;;
-        30)
+        ## PRIVATE CLUSTERS ##
+        60)
             createPrivateAKSClusterWithRGAndVnet
             break
             ;;
-        31)
+        61)
             createPrivateAKSClusterAPIIntegration
             break
             ;;
-        32)
+        62)
             createPrivateAKSClusterUDR
             break
             ;;
@@ -570,6 +582,11 @@ createPublicAKSClusterVirtualNode() {
 createPublicAKSClusterIstioServiceMesh() {
     echo "Creating AKS cluster with Istio-based Service Mesh Addon"
     createPublicAKSClusterWithRGAndVNET "--enable-azure-service-mesh"
+}
+
+createPublicAKSClusterCostAnalysis() {
+    echo "Creating AKS cluster with Cost Analysis Addon"
+    createPublicAKSClusterWithRGAndVNET "--tier standard --enable-cost-analysis"
 }
 
 createPublicAKSClusterDapr() {

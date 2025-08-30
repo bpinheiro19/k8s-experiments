@@ -284,6 +284,7 @@ aksTemplates() {
     echo "## 54 - AKS cluster with Node Autoprovisioning                ##"
     echo "## 55 - AKS cluster with Network Observability                ##"
     echo "## 56 - AKS cluster with ACR                                  ##"
+    echo "## 57 - AKS cluster with Spot Node Pool                       ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
@@ -422,6 +423,10 @@ aksTemplates() {
             ;;
         56)
             createPublicAKSWithACR
+            break
+            ;;
+        57)
+            createPublicAKSClusterSpotNodePool
             break
             ;;
         ## PRIVATE CLUSTERS ##
@@ -713,6 +718,15 @@ createPublicAKSWithACR() {
 
     createAKSCluster "--attach-acr $acr"
     echo "Create pod with ACR image: kubectl run my-nginx --image=$acr.azurecr.io/nginx:v1"
+}
+
+createPublicAKSClusterSpotNodePool(){
+    echo "Creating AKS cluster with Spot Node Pool"
+
+    createPublicAKSClusterWithRGAndVNET
+
+    echo "Creating Spot Node Pool"
+    az aks nodepool add -g $rg --cluster-name $aks --name spot --priority Spot --eviction-policy Delete --mode User --node-vm-size $sku --spot-max-price "-1" --enable-cluster-autoscaler --min-count 1 --max-count 3
 }
 
 createAKSCluster() {

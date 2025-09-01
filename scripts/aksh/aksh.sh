@@ -17,7 +17,7 @@ networkDataplane="azure"
 serviceCidr=10.0.241.0/24
 podCIDR=172.16.0.0/16
 dnsIp=10.0.241.10
-sku="Standard_D2s_v5"
+sku="Standard_D2as_v5"
 nodeCount=1
 outboundType="loadBalancer"
 overlay="--network-plugin-mode overlay --pod-cidr $podCIDR"
@@ -266,6 +266,8 @@ aksTemplates() {
     echo "## 35 - AKS cluster with Virtual Node Addon                   ##"
     echo "## 36 - AKS cluster with Istio-based Service Mesh Addon       ##"
     echo "## 37 - AKS cluster with Cost Analysis Addon                  ##"
+    echo "## 38 - AKS cluster with Application Routing Addon            ##"
+    echo "## 39 - AKS cluster with Vertical Pod Autoscaling             ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                         EXTENSIONS                         ##"
     echo "## ---------------------------------------------------------- ##"
@@ -373,6 +375,14 @@ aksTemplates() {
             ;;
         37)
             createPublicAKSClusterCostAnalysis
+            break
+            ;;
+        38)
+            createPublicAKSClusterApplicationRouting
+            break
+            ;;
+        39)
+            createPublicAKSClusterVerticalPodAutoscaling
             break
             ;;
         ## EXTENSIONS ##
@@ -592,6 +602,18 @@ createPublicAKSClusterIstioServiceMesh() {
 createPublicAKSClusterCostAnalysis() {
     echo "Creating AKS cluster with Cost Analysis Addon"
     createPublicAKSClusterWithRGAndVNET "--tier standard --enable-cost-analysis"
+}
+
+createPublicAKSClusterApplicationRouting(){
+    echo "Creating AKS cluster with Application Routing Addon"
+
+    createPublicAKSClusterWithRGAndVNET "--enable-app-routing"
+}
+
+createPublicAKSClusterVerticalPodAutoscaling(){
+    echo "Creating AKS cluster with Vertical Pod Autoscaling"
+
+    createPublicAKSClusterWithRGAndVNET "--enable-vpa"
 }
 
 createPublicAKSClusterDapr() {

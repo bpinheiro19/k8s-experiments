@@ -17,6 +17,8 @@ networkDataplane="azure"
 serviceCidr=10.0.241.0/24
 podCIDR=172.16.0.0/16
 dnsIp=10.0.241.10
+nodepoolName="system"
+nodePoolType="VirtualMachineScaleSets"
 sku="Standard_D2as_v5"
 nodeCount=1
 outboundType="loadBalancer"
@@ -287,6 +289,7 @@ aksTemplates() {
     echo "## 55 - AKS cluster with Network Observability                ##"
     echo "## 56 - AKS cluster with ACR                                  ##"
     echo "## 57 - AKS cluster with Spot Node Pool                       ##"
+    echo "## 58 - AKS cluster with Virtual Machines Node Pool           ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
@@ -437,6 +440,10 @@ aksTemplates() {
             ;;
         57)
             createPublicAKSClusterSpotNodePool
+            break
+            ;;
+        58)
+            createPublicAKSClusterVirtualMachinesNodePool
             break
             ;;
         ## PRIVATE CLUSTERS ##
@@ -751,10 +758,30 @@ createPublicAKSClusterSpotNodePool(){
     az aks nodepool add -g $rg --cluster-name $aks --name spot --priority Spot --eviction-policy Delete --mode User --node-vm-size $sku --spot-max-price "-1" --enable-cluster-autoscaler --min-count 1 --max-count 3
 }
 
+createPublicAKSClusterVirtualMachinesNodePool(){
+    echo "Creating AKS cluster with Virtual Machines Node Pool"
+    nodePoolType="VirtualMachines"
+
+    createRG
+    createVNET
+    
+    aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
+
+    echo "Creating user-assigned managed identity and role assignments"
+    identityId=$(az identity create -g $rg --name "aks-vmnode-identity" --location $location --query principalId -o tsv)
+    identityResourceId=$(az identity list -g $rg --output json --query '[].id' -o tsv)
+
+    az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $identityId -o $output
+
+    createAKSCluster "--assign-identity $identityResourceId"
+
+    az aks nodepool manual-scale add -g $rg --cluster-name $aks --name $nodepoolName --vm-sizes "Standard_D4as_v5" --node-count 2
+}
+
 createAKSCluster() {
     aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
     echo "Creating AKS Cluster"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $nodeCount --outbound-type $outboundType -o $output $1
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --nodepool-name $nodepoolName --node-vm-size $sku --node-count $nodeCount --vm-set-type $nodePoolType --outbound-type $outboundType -o $output $1
 
     echo "AKS Cluster created successfully"
     echo "Download cluster credentials: az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
@@ -780,7 +807,7 @@ createPrivateAKSClusterAPIIntegration() {
 
     echo "Creating identity and role assignments"
     identityId=$(az identity create -g $rg --name "aks-api-integration-identity" --location $location --query principalId -o tsv)
-    identityResourceId=$(az identity list -g aks-rg --output json --query '[].id' -o tsv)
+    identityResourceId=$(az identity list -g $rg --output json --query '[].id' -o tsv)
     sleep 10
 
     az role assignment create --scope $apiSubnetId --role "Network Contributor" --assignee {$identityId} -o $output

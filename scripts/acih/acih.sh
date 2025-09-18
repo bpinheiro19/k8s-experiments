@@ -1,19 +1,21 @@
 #!/bin/bash
-
+rand=$RANDOM
 rg="aci-rg"
 location="uksouth"
 
 #VNET
-vnet="aci-vnet"
+vnet="aci-vnet$rand"
 vnetAddr=10.0.0.0/16
 subnet="aci-subnet"
 subnetAddr=10.0.240.0/24
 
 #ACI
-aci="appcontainer$RANDOM"
-dnsLabel="bp-aci-demo$RANDOM"
+aci="appcontainer$rand"
+image="mcr.microsoft.com/azuredocs/aci-helloworld"
+osType="Linux"
+dnsLabel="aci-demo$rand"
 cpu=1
-mem=1
+mem=2
 
 aci() {
 
@@ -70,20 +72,27 @@ createVNET() {
     az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $subnet --subnet-prefixes $subnetAddr
 }
 
-##################################################
+###########################################
 ########### Azure Container Instances ############
-createPublicACI() {
+createACI() {
+    echo "Creating Azure Container Instance"
+    az container create --name $aci --resource-group $rg --image $image --cpu $cpu --memory $mem --os-type $osType $1
+}
+createACIWithRGAndVNET() {
     createRG
     createVNET
-    echo "Creating public Azure Container Instance"
-    az container create --name $aci --resource-group $rg --image mcr.microsoft.com/azuredocs/aci-helloworld --cpu $cpu --memory $mem --ip-address Public --dns-name-label $dnsLabel --os-type Linux --ports 80
+
+    createACI $1
+}
+
+createPublicACI() {
+    echo "Creating Public Azure Container Instance"
+    createACIWithRGAndVNET "--ip-address Public --dns-name-label $dnsLabel --ports 80"
 }
 
 createVnetACI() {
-    createRG
-    createVNET
     echo "Creating Azure Container Instance with vnet"
-    az container create --name $aci --resource-group $rg --image mcr.microsoft.com/azure-cli --cpu $cpu --memory $mem --os-type Linux --vnet $vnet --subnet $subnet --command-line "tail -f /dev/null"
+    createACIWithRGAndVNET "--vnet $vnet --subnet $subnet"
 }
 
 help() {

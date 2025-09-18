@@ -18,41 +18,21 @@ cpu=1
 mem=2
 
 aci() {
+    header
+    echo "## 01 - Azure Container Instance with Public IP               ##"
+    echo "## 02 - Azure Container instance with vnet                    ##"
+    echo "################################################################"
 
-    for arg in "$@"; do
+    while read -p "Option: " opt; do
 
-        case "$arg" in
-
-        create)
-            echo "################################################################"
-            echo "## 01 - Public Azure Container Instance                       ##"
-            echo "## 02 - Azure Container instance with vnet                    ##"
-            echo "################################################################"
-
-            read -p "Option: " opt
-
-                case $opt in
-                1)
-                    createPublicACI
-                    break
-                    ;;
-                2)
-                    createVnetACI
-                    break
-                    ;;
-                esac
+        case $opt in
+        1)
+            createPublicACI
+            break
             ;;
-        delrg)
-            echo "Deleting resource group"
-            az group delete -n $rg
-            ;;
-        -h | --help)
-            help
-            ;;
-        *)
-            echo "Invalid arguments"
-            help
-            exit 1
+        2)
+            createVnetACI
+            break
             ;;
         esac
     done
@@ -95,25 +75,82 @@ createVnetACI() {
     createACIWithRGAndVNET "--vnet $vnet --subnet $subnet"
 }
 
-help() {
-    echo 'Help:'
-    echo "Create an Azure Container Instance"
-    echo '$ acih create'
-    echo ""
-    echo "Delete the resource group"
-    echo "$ acih delrg"
-    echo ""
+header() {
+    echo "################################################################"
+    echo "##                                                            ##"
+    echo "##             Azure Container Instances Helper               ##"
+    echo "##                                                            ##"
+    echo "################################################################"
 }
 
 main() {
-    if [ -z "$1" ]; then
-        echo "No arguments!"
-        echo ""
-        help
-        return 1
-    fi
+    header
+    echo "## 01 - Create Azure Container Instance                       ##"
+    echo "## 02 - List Azure Container Instances                        ##"
+    echo "## 03 - Delete Azure Container Instance                       ##"
+    echo "## 04 - Delete resource group (aci-rg)                        ##"
+    echo "################################################################"
+    while read -p "Option: " opt; do
 
-    aci $@
+        case $opt in
+        1)
+            aci
+            break
+            ;;
+        2)
+            mapfile -t containers < <(az container list -g $rg --only-show-errors -o tsv --query '[].[name]')
+
+            if [ ${#containers[@]} -eq 0 ]; then
+                echo "No Azure Container Instances"
+            else
+                echo "################################################################"
+                echo "##                Azure Container Instances                   ##"
+                echo "################################################################"
+                for i in "${!containers[@]}"; do
+                    printf "## $(($i + 1)) - ${containers[i]}                                      ##\n"
+                done
+                echo "################################################################"
+            fi
+
+            break
+            ;;
+        3)
+            mapfile -t containers < <(az container list -g $rg --only-show-errors -o tsv --query '[].[name]')
+
+            size=${#containers[@]}
+
+            if [ $size -eq 0 ]; then
+                echo "No Azure Container Instances"
+            else
+                echo "################################################################"
+                echo "##                Azure Container Instances                   ##"
+                echo "################################################################"
+                for i in "${!containers[@]}"; do
+                    printf "## $(($i + 1)) - ${containers[i]}                                      ##\n"
+                done
+                echo "################################################################"
+
+                read -p "Enter the container number: " index
+
+                if [[ $index =~ ^[0-9]+$ ]] && (( $index <= size )); then
+                    container=${containers[index-1]}
+                    echo "Deleting the Azure Container Instance - $container"
+                    az container delete --name $container --resource-group $rg --yes
+                else
+                    echo "$index is NOT a valid index."
+                fi                
+
+            fi
+
+            break
+            ;;
+        4)
+            echo "Deleting the aci-rg resource group"
+            az group delete -n $rg --no-wait
+            break
+            ;;
+        esac
+    done
 }
 
 main $@

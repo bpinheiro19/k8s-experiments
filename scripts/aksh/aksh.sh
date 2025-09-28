@@ -926,7 +926,7 @@ main() {
             if [ ${#clusters[@]} -eq 0 ]; then
                 echo "No AKS Clusters"
             else
-                echo "################################################################"
+                header
                 echo "##                        AKS Clusters                        ##"
                 echo "################################################################"
                 for i in "${!clusters[@]}"; do
@@ -940,22 +940,29 @@ main() {
         4)
             mapfile -t clusters < <(az aks list -g $rg --only-show-errors -o tsv --query '[].[name]')
 
-            if [ ${#clusters[@]} -eq 0 ]; then
+            size=(${#clusters[@]})
+
+            if [ $size -eq 0 ]; then
                 echo "No AKS Clusters"
             else
-                echo "################################################################"
+                header
                 echo "##                        AKS Clusters                        ##"
                 echo "################################################################"
                 for i in "${!clusters[@]}"; do
-                    printf "## $(($i + 1)) - ${clusters[i]}                                          ##\n"
+                    printf "## $(($i+1)) - ${clusters[i]}                                          ##\n"
                 done
                 echo "################################################################"
 
-                read -p "Enter the cluster number: " AKS_INDEX
-                cluster=${clusters[AKS_INDEX]}
+                read -p "Enter the cluster number: " index
 
-                echo "Deleting the AKS cluster - $cluster"
-                az aks delete --name $cluster --resource-group $rg
+                if [[ $index =~ ^[1-9]+$ ]] && (( $index <= $size )); then
+                    cluster=${clusters[index-1]}
+                    echo "Deleting the AKS cluster - $cluster"
+                    az aks delete --name $cluster --resource-group $rg
+                else
+                    echo "Selected index ($index) is not valid."
+                fi         
+                
             fi
 
             break

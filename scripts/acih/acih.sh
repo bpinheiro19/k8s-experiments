@@ -117,6 +117,47 @@ header() {
     echo "################################################################"
 }
 
+listACI(){
+    mapfile -t containers < <(az container list -g $rg --only-show-errors -o tsv --query '[].[name]')
+    
+    size=${#containers[@]}
+
+    if [ $size -eq 0 ]; then
+        echo "No Azure Container Instances"
+    else
+        echo "################################################################"
+        echo "##                Azure Container Instances                   ##"
+        echo "################################################################"
+        for i in $(seq 1 $size); do
+            printf "## $(($i)) - ${containers[i-1]}                                      ##\n"
+        done
+        echo "################################################################"
+    fi
+}
+
+deleteACI(){
+    listACI
+    
+    if [ $size -ne 0 ]; then
+
+        read -p "Enter the container number: " index
+        
+        if [[ $index =~ ^[1-9]+$ ]] && (( $index <= size )); then
+            container=${containers[index-1]}
+            echo "Deleting the Azure Container Instance - $container"
+            az container delete --name $container --resource-group $rg --yes
+        else
+            echo "$index is NOT a valid index."
+        fi
+    fi                
+
+}
+
+deleteRG(){
+    echo "Deleting the aci-rg resource group"
+    az group delete -n $rg --no-wait
+}
+
 main() {
     header
     echo "## 01 - Create Azure Container Instance                       ##"
@@ -132,59 +173,19 @@ main() {
             break
             ;;
         2)
-            mapfile -t containers < <(az container list -g $rg --only-show-errors -o tsv --query '[].[name]')
-
-            if [ ${#containers[@]} -eq 0 ]; then
-                echo "No Azure Container Instances"
-            else
-                echo "################################################################"
-                echo "##                Azure Container Instances                   ##"
-                echo "################################################################"
-                for i in "${!containers[@]}"; do
-                    printf "## $(($i + 1)) - ${containers[i]}                                      ##\n"
-                done
-                echo "################################################################"
-            fi
-
+            listACI
             break
             ;;
         3)
-            mapfile -t containers < <(az container list -g $rg --only-show-errors -o tsv --query '[].[name]')
-
-            size=${#containers[@]}
-
-            if [ $size -eq 0 ]; then
-                echo "No Azure Container Instances"
-            else
-                echo "################################################################"
-                echo "##                Azure Container Instances                   ##"
-                echo "################################################################"
-                for i in "${!containers[@]}"; do
-                    printf "## $(($i + 1)) - ${containers[i]}                                      ##\n"
-                done
-                echo "################################################################"
-
-                read -p "Enter the container number: " index
-
-                if [[ $index =~ ^[0-9]+$ ]] && (( $index <= size )); then
-                    container=${containers[index-1]}
-                    echo "Deleting the Azure Container Instance - $container"
-                    az container delete --name $container --resource-group $rg --yes
-                else
-                    echo "$index is NOT a valid index."
-                fi                
-
-            fi
-
+            deleteACI
             break
             ;;
         4)
-            echo "Deleting the aci-rg resource group"
-            az group delete -n $rg --no-wait
+            deleteRG
             break
             ;;
         esac
     done
 }
 
-main $@
+main

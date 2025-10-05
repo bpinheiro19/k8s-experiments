@@ -8,8 +8,8 @@ vnet="aci-vnet$rand"
 vnetAddr=10.0.0.0/16
 subnet="aci-subnet"
 subnetAddr=10.0.240.0/24
-publicIpName="myPublicIP"
-natGatewayName="myNATgateway"
+publicIpName="publicIP$rand"
+natGatewayName="NATgateway$rand"
 
 #ACI
 aci="appcontainer$rand"
@@ -86,7 +86,7 @@ createVnetACI() {
 createACIAzureCLI() {
     createRG
     echo "Creating Azure Container Instance with Azure CLI image"
-    az container create --name $aci --resource-group $rg --image "mcr.microsoft.com/azure-cli" --cpu $cpu --memory $mem --os-type $osType --command-line 'tail -f /dev/null'
+    createACI "--command-line "sleep inf""
 }
 
 createNatGateway(){

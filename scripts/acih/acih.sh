@@ -19,12 +19,17 @@ dnsLabel="aci-demo$rand"
 cpu=1
 mem=2
 
+#STORAGE
+storageAccount="storageaccountaci"
+fileshare="fileshare$rand"
+
 aci() {
     header
     echo "## 01 - Azure Container Instance with Public IP               ##"
     echo "## 02 - Azure Container instance with Azure CLI image         ##"
     echo "## 03 - Azure Container instance with vnet                    ##"
     echo "## 04 - Azure Container instance with NAT Gateway             ##"
+    echo "## 05 - Azure Container instance with Fileshare               ##"
     echo "################################################################"
 
     while read -p "Option: " opt; do
@@ -44,6 +49,10 @@ aci() {
             ;;
         4)
             createACINatGateway
+            break
+            ;;
+        5)
+            createACIStorage
             break
             ;;
         esac
@@ -107,6 +116,24 @@ createACINatGateway() {
     createNatGateway
 
     createACI "--vnet $vnet --subnet $subnet"
+}
+
+createFileshare(){
+    echo "Creating Azure Storage Account"
+    az storage account create --allow-shared-key-access --resource-group $rg --name $storageAccount --location $location --sku Standard_LRS
+    echo "Creating Fileshare"
+    az storage share create --name $fileshare --account-name $storageAccount
+}
+
+createACIStorage(){
+    echo "Creating Azure Container Instance with fileshare"
+    createRG
+
+    createFileshare
+
+    STORAGE_KEY=$(az storage account keys list --resource-group $rg --account-name $storageAccount --query "[0].value" --output tsv)
+    image="mcr.microsoft.com/azuredocs/aci-hellofiles"
+    createACI "--azure-file-volume-account-name $storageAccount --azure-file-volume-account-key $STORAGE_KEY --azure-file-volume-share-name $fileshare --azure-file-volume-mount-path /aci/logs/"
 }
 
 header() {

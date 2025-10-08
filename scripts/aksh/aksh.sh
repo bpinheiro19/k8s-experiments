@@ -20,7 +20,8 @@ dnsIp=10.0.241.10
 nodepoolName="system"
 nodePoolType="VirtualMachineScaleSets"
 sku="Standard_D2as_v5"
-nodeCount=1
+minNodeCount=1
+maxNodeCount=3
 outboundType="loadBalancer"
 overlay="--network-plugin-mode overlay --pod-cidr $podCIDR"
 
@@ -86,14 +87,13 @@ aksCustom() {
 }
 
 aksPublicPrivate() {
-    while true; do
-        header
-        echo "##############         AKS Cluster Type        #################"
-        echo "## 01 - Public AKS cluster                                    ##"
-        echo "## 02 - Private AKS cluster                                   ##"
-        echo "################################################################"
+    header
+    echo "##############         AKS Cluster Type        #################"
+    echo "## 01 - Public AKS cluster                                    ##"
+    echo "## 02 - Private AKS cluster                                   ##"
+    echo "################################################################"
 
-        read -p "Option: " publicprivate
+    while read -p "Option: " publicprivate; do
 
         case $publicprivate in
         1)
@@ -123,16 +123,15 @@ aksVersion() {
 }
 
 aksNetworkPlugin() {
-    while true; do
-        header
-        echo "##############           Network Plugin        #################"
-        echo "## 01 - Azure Overlay                                         ##"
-        echo "## 02 - Azure CNI NodeSubnet                                  ##"
-        echo "## 03 - Kubenet                                               ##"
-        echo "################################################################"
+    header
+    echo "##############           Network Plugin        #################"
+    echo "## 01 - Azure Overlay                                         ##"
+    echo "## 02 - Azure CNI NodeSubnet                                  ##"
+    echo "## 03 - Kubenet                                               ##"
+    echo "################################################################"
 
-        read -p "Option: " networkplugin
-
+    while read -p "Option: " networkplugin; do
+    
         case $networkplugin in
         1)
             networkPlugin="azure"
@@ -152,16 +151,15 @@ aksNetworkPlugin() {
 }
 
 aksNetworkPolicy() {
-    while true; do
-        header
-        echo "##############           Network Policy        #################"
-        echo "## 00 - None                                                  ##"
-        echo "## 01 - Azure                                                 ##"
-        echo "## 02 - Calico                                                ##"
-        echo "## 03 - Cilium                                                ##"
-        echo "################################################################"
-
-        read -p "Option: " networkpolicy
+    header
+    echo "##############           Network Policy        #################"
+    echo "## 00 - None                                                  ##"
+    echo "## 01 - Azure                                                 ##"
+    echo "## 02 - Calico                                                ##"
+    echo "## 03 - Cilium                                                ##"
+    echo "################################################################"
+    
+    while read -p "Option: " networkpolicy; do    
 
         case $networkpolicy in
         0)
@@ -186,19 +184,18 @@ aksNetworkPolicy() {
 }
 
 aksAddons() {
-    while true; do
-        header
-        echo "##############             Addons              #################"
-        echo "## 00 - None                                                  ##"
-        echo "## 01 - Azure Key Vault                                       ##"
-        echo "## 02 - Azure Monitor                                         ##"
-        echo "## 03 - Azure Defender and Policy                             ##"
-        echo "## 04 - App Routing                                           ##"
-        echo "## 05 - AGIC                                                  ##"
-        echo "## 06 - KEDA                                                  ##"
-        echo "################################################################"
+    header
+    echo "##############             Addons              #################"
+    echo "## 00 - None                                                  ##"
+    echo "## 01 - Azure Key Vault                                       ##"
+    echo "## 02 - Azure Monitor                                         ##"
+    echo "## 03 - Azure Defender and Policy                             ##"
+    echo "## 04 - App Routing                                           ##"
+    echo "## 05 - AGIC                                                  ##"
+    echo "## 06 - KEDA                                                  ##"
+    echo "################################################################"
 
-        read -p "Option: " addon
+    while read -p "Option: " addon; do
 
         case $addon in
 
@@ -299,9 +296,7 @@ aksTemplates() {
     echo "## ---------------------------------------------------------- ##"
     echo "################################################################"
 
-    while true; do
-
-        read -p "Option: " opt
+    while read -p "Option: " opt; do
 
         case $opt in
         ## NETWORK PLUGINS ##
@@ -641,7 +636,8 @@ createPublicAKSClusterFlux() {
 
 createPublicAKSClusterAzureContainerStorage() {
     echo "Creating AKS cluster with Azure Container Storage extension"
-    nodeCount=3
+    minNodeCount=3
+    maxNodeCount=5
     sku="Standard_D8s_v5"
     createPublicAKSClusterWithRGAndVNET "--enable-azure-container-storage azureDisk"
 }
@@ -761,27 +757,14 @@ createPublicAKSClusterSpotNodePool(){
 createPublicAKSClusterVirtualMachinesNodePool(){
     echo "Creating AKS cluster with Virtual Machines Node Pool"
     nodePoolType="VirtualMachines"
-
-    createRG
-    createVNET
-    
-    aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
-
-    echo "Creating user-assigned managed identity and role assignments"
-    identityId=$(az identity create -g $rg --name "aks-vmnode-identity" --location $location --query principalId -o tsv)
-    identityResourceId=$(az identity list -g $rg --output json --query '[].id' -o tsv)
-
-    az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $identityId -o $output
-
-    createAKSCluster "--assign-identity $identityResourceId"
-
-    az aks nodepool manual-scale add -g $rg --cluster-name $aks --name $nodepoolName --vm-sizes "Standard_D4as_v5" --node-count 2
+    minNodeCount=2
+    createPublicAKSClusterWithRGAndVNET "--vm-sizes \"Standard_D2s_v5,Standard_D4s_v5\" "
 }
 
 createAKSCluster() {
     aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
     echo "Creating AKS Cluster"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --nodepool-name $nodepoolName --node-vm-size $sku --node-count $nodeCount --vm-set-type $nodePoolType --outbound-type $outboundType -o $output $1
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --nodepool-name $nodepoolName --node-vm-size $sku --node-count $minNodeCount --enable-cluster-autoscaler --min-count $minNodeCount --max-count $maxNodeCount --vm-set-type $nodePoolType --outbound-type $outboundType -o $output $1
 
     echo "AKS Cluster created successfully"
     echo "Download cluster credentials: az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
@@ -842,7 +825,7 @@ createAzureFirewall() {
 
 createPrivateAKSClusterUDR() {
     echo "Starting creation of private AKS Cluster with User Defined Routing"
-    nodeCount=2
+    minNodeCount=2
     outboundType="userDefinedRouting"
 
     createRG
@@ -900,16 +883,14 @@ header() {
 }
 
 main() {
-    while true; do
-        header
-        echo "## 01 - Create AKS cluster from templates                     ##"
-        echo "## 02 - Create custom AKS cluster                             ##"
-        echo "## 03 - List AKS clusters                                     ##"
-        echo "## 04 - Delete AKS cluster                                    ##"
-        echo "## 05 - Delete resource group (aks-rg)                        ##"
-        echo "################################################################"
-
-        read -p "Option: " opt
+    header
+    echo "## 01 - Create AKS cluster from templates                     ##"
+    echo "## 02 - Create custom AKS cluster                             ##"
+    echo "## 03 - List AKS clusters                                     ##"
+    echo "## 04 - Delete AKS cluster                                    ##"
+    echo "## 05 - Delete resource group (aks-rg)                        ##"
+    echo "################################################################"
+    while read -p "Option: " opt; do
 
         case $opt in
         1)
@@ -926,7 +907,7 @@ main() {
             if [ ${#clusters[@]} -eq 0 ]; then
                 echo "No AKS Clusters"
             else
-                header
+                echo "################################################################"
                 echo "##                        AKS Clusters                        ##"
                 echo "################################################################"
                 for i in "${!clusters[@]}"; do
@@ -945,11 +926,11 @@ main() {
             if [ $size -eq 0 ]; then
                 echo "No AKS Clusters"
             else
-                header
+                echo "################################################################"
                 echo "##                        AKS Clusters                        ##"
                 echo "################################################################"
                 for i in "${!clusters[@]}"; do
-                    printf "## $(($i+1)) - ${clusters[i]}                                          ##\n"
+                    printf "## $(($i + 1)) - ${clusters[i]}                                          ##\n"
                 done
                 echo "################################################################"
 

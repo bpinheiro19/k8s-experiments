@@ -24,6 +24,7 @@ minNodeCount=1
 maxNodeCount=3
 outboundType="loadBalancer"
 overlay="--network-plugin-mode overlay --pod-cidr $podCIDR"
+aksUAMIdentity="aks-identity"
 
 #VNET
 vnet="vnet$date"
@@ -474,6 +475,19 @@ createVNET() {
 }
 
 ###########################################
+################ Identity #################
+createUserAssignedManagedIdentity() {
+    echo "Creating AKS Managed Identity"
+    az identity create --resource-group $rg --name $aksUAMIdentity --location $location -o $output
+
+    echo "Creating Network Contributor role assignment for AKS Managed Identity"
+    subscriptionId="$(az account show --query id --output tsv)"
+    principalId=$(az identity show --resource-group $rg --name $aksUAMIdentity --query principalId -o tsv)
+
+    az role assignment create --scope "/subscriptions/${subscriptionId}/resourceGroups/${rg}/providers/Microsoft.Network/virtualNetworks/${vnet}" --role "Network Contributor" --assignee $principalId -o $output
+}
+
+###########################################
 ########### Public AKS Clusters ###########
 createPublicAKSClusterAzureCNIOverlay() {
     echo "Creating AKS cluster with Azure CNI Overlay"
@@ -763,8 +777,10 @@ createPublicAKSClusterVirtualMachinesNodePool(){
 
 createAKSCluster() {
     aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
+    identityResourceId=$(az identity show --resource-group $rg --name $aksUAMIdentity --query id -o tsv)
+
     echo "Creating AKS Cluster"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --nodepool-name $nodepoolName --node-vm-size $sku --node-count $minNodeCount --enable-cluster-autoscaler --min-count $minNodeCount --max-count $maxNodeCount --vm-set-type $nodePoolType --outbound-type $outboundType -o $output $1
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $minNodeCount --enable-cluster-autoscaler --min-count $minNodeCount --max-count $maxNodeCount --vm-set-type $nodePoolType --outbound-type $outboundType --assign-identity $identityResourceId -o $output $1
 
     echo "AKS Cluster created successfully"
     echo "Download cluster credentials: az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
@@ -773,6 +789,7 @@ createAKSCluster() {
 createPublicAKSClusterWithRGAndVNET() {
     createRG
     createVNET
+    createUserAssignedManagedIdentity
 
     createAKSCluster "$1"
 }

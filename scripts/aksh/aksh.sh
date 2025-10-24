@@ -77,7 +77,6 @@ acr="aksacr$date"
 ############################################
 ########### AKS Custom Cluster #############
 aksCustom() {
-
     aksPublicPrivate
     aksVersion
     aksNetworkPlugin
@@ -463,21 +462,21 @@ aksTemplates() {
 ###########################################
 ############## Resource Group #############
 createRG() {
-    echo "Creating the resource group"
+    echo "Creating ${rg} Resource Group"
     az group create -n $rg -l $location -o $output
 }
 
 ###########################################
 ############# Virtual Network #############
 createVNET() {
-    echo "Creating virtual network and subnets"
+    echo "Creating ${vnet} Virtual Network and ${aksSubnet} subnet"
     az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $aksSubnet --subnet-prefixes $aksSubnetAddr -l $location -o $output
 }
 
 ###########################################
 ################ Identity #################
 createUserAssignedManagedIdentity() {
-    echo "Creating AKS Managed Identity"
+    echo "Creating AKS Managed Identity - ${aksUAMIdentity}"
     az identity create --resource-group $rg --name $aksUAMIdentity --location $location -o $output
     sleep 10
     
@@ -487,6 +486,9 @@ createUserAssignedManagedIdentity() {
 
     az role assignment create --scope "/subscriptions/${subscriptionId}/resourceGroups/${rg}/providers/Microsoft.Network/virtualNetworks/${vnet}" --role "Network Contributor" --assignee $principalId -o $output
 }
+
+##TODO
+# Create a separate Role Assignment function
 
 ###########################################
 ########### Public AKS Clusters ###########
@@ -504,6 +506,7 @@ createPublicAKSClusterAzureCNIDynamicIPAllocation() {
     echo "AKS cluster with Azure CNI Dynamic IP Allocation"
     createRG
     createVNET
+    createUserAssignedManagedIdentity
 
     az network vnet subnet create -g $rg --vnet-name $vnet --name $podSubnet --address-prefixes $podSubnetAddr -o $output
 
@@ -587,6 +590,7 @@ createPublicAKSClusterAGIC() {
     echo "Creating AKS cluster with AGIC Addon"
     createRG
     createVNET
+    createUserAssignedManagedIdentity
 
     createAppGw
 
@@ -605,6 +609,7 @@ createPublicAKSClusterVirtualNode() {
 
     createRG
     createVNET
+    createUserAssignedManagedIdentity
 
     az network vnet subnet create -g $rg --vnet-name $vnet --name $virtualNodeSubnet --address-prefixes $virtualNodeSubnetAddr
 
@@ -712,6 +717,7 @@ createPublicAKSClusterZoneAligned() {
 createPublicAKSClusterWindowsNodePool() {
     echo "Creating AKS cluster with windows node pool"
     createPublicAKSClusterWithRGAndVNET
+
     echo "Add new windows node pool"
     az aks nodepool add --cluster-name $aks --name win -g $rg --os-type Windows --mode User --node-count 1 --node-vm-size Standard_D2s_v3
 }
@@ -722,6 +728,14 @@ createPublicAKSClusterNAP() {
     createPublicAKSClusterWithRGAndVNET "$overlay --node-provisioning-mode Auto"
 }
 
+createAzureMonitorAndGrafana() {
+    echo "Creating Azure Monitor Workspace"
+    az resource create -g $rg --namespace microsoft.monitor --resource-type accounts --name $monitorWorkspace --location $location --properties '{}' -o $output
+
+    echo "Creating Grafana Instance"
+    az grafana create --name $grafana -g $rg
+}
+
 createPublicAKSClusterNetworkObservability() {
     echo "Creating AKS cluster with Network Observability"
     networkPolicy="cilium"
@@ -729,12 +743,9 @@ createPublicAKSClusterNetworkObservability() {
 
     createRG
     createVNET
+    createUserAssignedManagedIdentity
 
-    echo "Creating Azure Monitor Workspace"
-    az resource create -g $rg --namespace microsoft.monitor --resource-type accounts --name $monitorWorkspace --location $location --properties '{}' -o $output
-
-    echo "Creating Grafana Instance"
-    az grafana create --name $grafana -g $rg
+    createAzureMonitorAndGrafana
 
     grafanaId=$(az grafana show --name $grafana -g $rg --query id --output tsv)
     monitorWorkspaceId=$(az resource show -g $rg --name $monitorWorkspace --resource-type "Microsoft.Monitor/accounts" --query id --output tsv)
@@ -751,6 +762,7 @@ createPublicAKSWithACR() {
     echo "Starting creation of AKS cluster with Azure Container Registry"
     createRG
     createVNET
+    createUserAssignedManagedIdentity
     createACR
 
     echo "Importing nginx image to ACR: $acr"
@@ -762,7 +774,6 @@ createPublicAKSWithACR() {
 
 createPublicAKSClusterSpotNodePool(){
     echo "Creating AKS cluster with Spot Node Pool"
-
     createPublicAKSClusterWithRGAndVNET
 
     echo "Creating Spot Node Pool"
@@ -780,7 +791,7 @@ createAKSCluster() {
     aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
     identityResourceId=$(az identity show --resource-group $rg --name $aksUAMIdentity --query id -o tsv)
 
-    echo "Creating AKS Cluster"
+    echo "Creating AKS Cluster - ${aks}"
     az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $minNodeCount --enable-cluster-autoscaler --min-count $minNodeCount --max-count $maxNodeCount --vm-set-type $nodePoolType --outbound-type $outboundType --assign-identity $identityResourceId -o $output $1
 
     echo "AKS Cluster created successfully"
@@ -848,6 +859,7 @@ createPrivateAKSClusterUDR() {
 
     createRG
     createVNET
+    createUserAssignedManagedIdentity
     createAzureFirewall
 
     fwPublicIP=$(az network public-ip show -g $rg -n $firewallPublicIP --query "ipAddress" -o tsv)
@@ -872,6 +884,7 @@ createPrivateAKSClusterWithRGAndVnet() {
     echo "Creating Private AKS Cluster"
     createRG
     createVNET
+    createUserAssignedManagedIdentity
 
     createPrivateAKSCluster "$1"
 
@@ -900,6 +913,47 @@ header() {
     echo "################################################################"
 }
 
+listAKS(){
+    mapfile -t clusters < <(az aks list -g $rg --only-show-errors -o tsv --query '[].[name]')
+
+    size=${#clusters[@]}
+
+    if [ size -eq 0 ]; then
+        echo "No AKS Clusters"
+    else
+        echo "################################################################"
+        echo "##                        AKS Clusters                        ##"
+        echo "################################################################"
+        for i in $(seq 1 $size); do
+            printf "## $(($i)) - ${clusters[i-1]}                                            ##\n"
+        done
+        echo "################################################################"
+    fi
+}
+
+deleteAKS(){
+    listAKS
+
+    if [ $size -ne 0 ]; then
+
+        read -p "Enter the cluster number: " index
+
+        if [[ $index =~ ^[1-9]+$ ]] && (( $index <= $size )); then
+            cluster=${clusters[index-1]}
+            echo "Deleting the AKS cluster - $cluster"
+            az aks delete --name $cluster --resource-group $rg
+        else
+            echo "Selected index ($index) is not valid."
+        fi         
+                
+    fi
+}
+
+deleteRG(){
+    echo "Deleting $rg resource group"
+    az group delete -n $rg --no-wait
+}
+
 main() {
     header
     echo "## 01 - Create AKS cluster from templates                     ##"
@@ -920,55 +974,15 @@ main() {
             break
             ;;
         3)
-            mapfile -t clusters < <(az aks list -g $rg --only-show-errors -o tsv --query '[].[name]')
-
-            if [ ${#clusters[@]} -eq 0 ]; then
-                echo "No AKS Clusters"
-            else
-                echo "################################################################"
-                echo "##                        AKS Clusters                        ##"
-                echo "################################################################"
-                for i in "${!clusters[@]}"; do
-                    printf "## $(($i + 1)) - ${clusters[i]}                                          ##\n"
-                done
-                echo "################################################################"
-            fi
-
+            listAKS
             break
             ;;
         4)
-            mapfile -t clusters < <(az aks list -g $rg --only-show-errors -o tsv --query '[].[name]')
-
-            size=(${#clusters[@]})
-
-            if [ $size -eq 0 ]; then
-                echo "No AKS Clusters"
-            else
-                echo "################################################################"
-                echo "##                        AKS Clusters                        ##"
-                echo "################################################################"
-                for i in "${!clusters[@]}"; do
-                    printf "## $(($i + 1)) - ${clusters[i]}                                          ##\n"
-                done
-                echo "################################################################"
-
-                read -p "Enter the cluster number: " index
-
-                if [[ $index =~ ^[1-9]+$ ]] && (( $index <= $size )); then
-                    cluster=${clusters[index-1]}
-                    echo "Deleting the AKS cluster - $cluster"
-                    az aks delete --name $cluster --resource-group $rg
-                else
-                    echo "Selected index ($index) is not valid."
-                fi         
-                
-            fi
-
+            deleteAKS
             break
             ;;
         5)
-            echo "Deleting resource group"
-            az group delete -n $rg --no-wait
+            deleteRG
             break
             ;;
         esac

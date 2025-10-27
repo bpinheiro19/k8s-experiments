@@ -25,6 +25,7 @@ maxNodeCount=3
 outboundType="loadBalancer"
 overlay="--network-plugin-mode overlay --pod-cidr $podCIDR"
 aksUAMIdentity="aks-identity$date"
+hasAPISubnet=false
 
 #VNET
 vnet="vnet$date"
@@ -471,6 +472,15 @@ createRG() {
 createVNET() {
     echo "Creating ${vnet} Virtual Network and ${aksSubnet} subnet"
     az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $aksSubnet --subnet-prefixes $aksSubnetAddr -l $location -o $output
+
+    if [ "$hasAPISubnet" = true ] ; then
+        createAPISubnet
+    fi
+}
+
+createAPISubnet() {
+    echo "Creating ${apiSubnet} subnet in the ${vnet} Virtual Network"
+    az network vnet subnet create -g $rg --vnet-name $vnet --name $apiSubnet --delegations Microsoft.ContainerService/managedClusters --address-prefixes $apiSubnetAddr -o $output
 }
 
 ###########################################
@@ -479,16 +489,20 @@ createUserAssignedManagedIdentity() {
     echo "Creating AKS Managed Identity - ${aksUAMIdentity}"
     az identity create --resource-group $rg --name $aksUAMIdentity --location $location -o $output
     sleep 10
-    
-    echo "Creating Network Contributor Role Assignment for AKS UAMI in aks-subnet"
-    subscriptionId="$(az account show --query id --output tsv)"
-    principalId=$(az identity show --resource-group $rg --name $aksUAMIdentity --query principalId -o tsv)
-
-    az role assignment create --scope "/subscriptions/${subscriptionId}/resourceGroups/${rg}/providers/Microsoft.Network/virtualNetworks/${vnet}" --role "Network Contributor" --assignee $principalId -o $output
+    createRoleAssignmentForAKSManagedIdentity
 }
 
-##TODO
-# Create a separate Role Assignment function
+createRoleAssignmentForAKSManagedIdentity() {
+    principalId=$(az identity show --resource-group $rg --name $aksUAMIdentity --query principalId -o tsv)
+
+    echo "Creating Network Contributor role assignment for AKS Managed Identity in ${aksSubnet}"
+    aksSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $aksSubnet --query id -o tsv)
+    az role assignment create --scope $aksSubnetId --role "Network Contributor" --assignee $principalId -o $output
+
+    echo "Creating Network Contributor Role Assignment for AKS Managed Identity in ${apiSubnet}"
+    apiSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $apiSubnet --query id -o tsv)
+    az role assignment create --scope $apiSubnetId --role "Network Contributor" --assignee $principalId -o $output
+}
 
 ###########################################
 ########### Public AKS Clusters ###########
@@ -808,22 +822,12 @@ createPublicAKSClusterWithRGAndVNET() {
 
 ###########################################
 ########### Private AKS Cluster ###########
-createAPISubnet() {
-    echo "Creating API Subnet"
-    az network vnet subnet create -g $rg --vnet-name $vnet --name $apiSubnet --delegations Microsoft.ContainerService/managedClusters --address-prefixes $apiSubnetAddr -o $output
-    apiSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $apiSubnet --query id -o tsv)
-
-    echo "Creating Network Contributor Role Assignment for AKS UAMI in apiserver-subnet"
-    principalId=$(az identity show --resource-group $rg --name $aksUAMIdentity --query principalId -o tsv)
-    az role assignment create --scope $apiSubnetId --role "Network Contributor" --assignee $principalId -o $output
-}
-
 createPrivateAKSClusterAPIIntegration() {
     echo "Creating private AKS Cluster with API Vnet Integration"
+    hasAPISubnet=true
     createRG
     createVNET
     createUserAssignedManagedIdentity
-    createAPISubnet
 
     createPrivateAKSCluster "--enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId "
 
@@ -944,8 +948,7 @@ deleteAKS(){
             az aks delete --name $cluster --resource-group $rg
         else
             echo "Selected index ($index) is not valid."
-        fi         
-                
+        fi
     fi
 }
 

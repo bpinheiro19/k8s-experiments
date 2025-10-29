@@ -17,7 +17,7 @@ networkDataplane="azure"
 serviceCidr=10.0.241.0/24
 podCIDR=172.16.0.0/16
 dnsIp=10.0.241.10
-nodepoolName="system"
+nodePoolMode="user"
 nodePoolType="VirtualMachineScaleSets"
 sku="Standard_D2as_v5"
 minNodeCount=1
@@ -27,6 +27,8 @@ overlay="--network-plugin-mode overlay --pod-cidr $podCIDR "
 autoscaler="--enable-cluster-autoscaler --min-count $minNodeCount --max-count $maxNodeCount "
 aksUAMIdentity="aks-identity$date"
 hasAPISubnet=false
+hasPodSubnet=false
+hasVirtualNodeSubnet=false
 
 #VNET
 vnet="vnet$date"
@@ -473,15 +475,37 @@ createRG() {
 createVNET() {
     echo "Creating ${vnet} Virtual Network and ${aksSubnet} subnet"
     az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr --subnet-name $aksSubnet --subnet-prefixes $aksSubnetAddr -l $location -o $output
+    vnetId=$(az network vnet show -g $rg -n $vnet --query id -o tsv)
 
     if [ "$hasAPISubnet" = true ] ; then
         createAPISubnet
+    fi
+
+    if [ "$hasPodSubnet" = true ] ; then
+        createPodSubnet
+    fi
+
+    if [ "$hasVirtualNodeSubnet" = true ] ; then
+        createVirtualNodeSubnet
     fi
 }
 
 createAPISubnet() {
     echo "Creating ${apiSubnet} subnet in the ${vnet} Virtual Network"
     az network vnet subnet create -g $rg --vnet-name $vnet --name $apiSubnet --delegations Microsoft.ContainerService/managedClusters --address-prefixes $apiSubnetAddr -o $output
+    apiSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $apiSubnet --query id -o tsv)
+}
+
+createPodSubnet() {
+    echo "Creating ${podSubnet} subnet in the ${vnet} Virtual Network"
+    az network vnet subnet create -g $rg --vnet-name $vnet --name $podSubnet --address-prefixes $podSubnetAddr -o $output
+    podSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $podSubnet --query id -o tsv)
+}
+
+createVirtualNodeSubnet() {
+    echo "Creating ${virtualNodeSubnet} subnet in the ${vnet} Virtual Network"
+    az network vnet subnet create -g $rg --vnet-name $vnet --name $virtualNodeSubnet --address-prefixes $virtualNodeSubnetAddr -o $output
+    virtualNodeSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $virtualNodeSubnet --query id -o tsv)
 }
 
 ###########################################
@@ -495,8 +519,6 @@ createUserAssignedManagedIdentity() {
 }
 
 createRoleAssignmentForAKSManagedIdentity() {
-    vnetId=$(az network vnet show -g $rg -n $vnet --query id -o tsv)
-
     echo "Creating Network Contributor role assignment for AKS Managed Identity in ${vnet}"
     az role assignment create --scope $vnetId --role "Network Contributor" --assignee $principalId -o $output
 }
@@ -515,14 +537,7 @@ createPublicAKSClusterAzureCNINodeSubnet() {
 
 createPublicAKSClusterAzureCNIDynamicIPAllocation() {
     echo "AKS cluster with Azure CNI Dynamic IP Allocation"
-    createRG
-    createVNET
-    createUserAssignedManagedIdentity
-
-    az network vnet subnet create -g $rg --vnet-name $vnet --name $podSubnet --address-prefixes $podSubnetAddr -o $output
-
-    podSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $podSubnet --query id -o tsv)
-    createAKSCluster "--pod-subnet-id $podSubnetId"
+    createPublicAKSClusterWithRGAndVNET "--pod-subnet-id $podSubnetId"
 }
 
 createPublicAKSClusterKubenet() {
@@ -576,14 +591,18 @@ createPublicAKSClusterAzureMonitoring() {
     createPublicAKSClusterWithRGAndVNET "--enable-azure-monitor-metrics --enable-addons monitoring"
 }
 
-createPublicAKSClusterKeyVault() {
-    echo "Creating AKS cluster with Azure Key Vault"
-    createPublicAKSClusterWithRGAndVNET "--enable-addons azure-keyvault-secrets-provider"
-
+createAzureKeyVault(){
     echo "Creating a new Azure Key Vault"
     az keyvault create --name $keyVaultName --resource-group $rg --location $location --enable-rbac-authorization -o $output
 
     az aks connection create keyvault --connection keyvaultconnection$date --resource-group $rg --name $aks --target-resource-group $rg --vault $keyVaultName --enable-csi --client-type none -o $output
+}
+
+createPublicAKSClusterKeyVault() {
+    echo "Creating AKS cluster with Azure Key Vault"
+    createPublicAKSClusterWithRGAndVNET "--enable-addons azure-keyvault-secrets-provider"
+
+    createAzureKeyVault
 }
 
 createAppGw() {
@@ -599,9 +618,7 @@ createAppGw() {
 
 createPublicAKSClusterAGIC() {
     echo "Creating AKS cluster with AGIC Addon"
-    createRG
-    createVNET
-    createUserAssignedManagedIdentity
+    createRgVnetUami
 
     createAppGw
 
@@ -617,14 +634,7 @@ createPublicAKSClusterKeda() {
 
 createPublicAKSClusterVirtualNode() {
     echo "Creating AKS cluster with Virtual Node"
-
-    createRG
-    createVNET
-    createUserAssignedManagedIdentity
-
-    az network vnet subnet create -g $rg --vnet-name $vnet --name $virtualNodeSubnet --address-prefixes $virtualNodeSubnetAddr
-
-    createAKSCluster "--enable-addons virtual-node --aci-subnet-name $virtualNodeSubnet"
+    createPublicAKSClusterWithRGAndVNET "--enable-addons virtual-node --aci-subnet-name $virtualNodeSubnet"
 }
 
 createPublicAKSClusterIstioServiceMesh() {
@@ -639,13 +649,11 @@ createPublicAKSClusterCostAnalysis() {
 
 createPublicAKSClusterApplicationRouting(){
     echo "Creating AKS cluster with Application Routing Addon"
-
     createPublicAKSClusterWithRGAndVNET "--enable-app-routing"
 }
 
 createPublicAKSClusterVerticalPodAutoscaling(){
     echo "Creating AKS cluster with Vertical Pod Autoscaling"
-
     createPublicAKSClusterWithRGAndVNET "--enable-vpa"
 }
 
@@ -662,7 +670,7 @@ createPublicAKSClusterFlux() {
     createPublicAKSClusterWithRGAndVNET
 
     echo "Installing Flux extension"
-    az k8s-configuration flux create -g $rg -c $aks -n cluster-config --namespace cluster-config -t managedClusters --scope cluster -u https://github.com/Azure/gitops-flux2-kustomize-helm-mt --branch main --kustomization name=infra path=./infrastructure prune=true --kustomization name=apps path=./apps/staging prune=true dependsOn=\["infra"\]
+    az k8s-configuration flux create -g $rg -c $aks -n cluster-config --namespace cluster-config -t managedClusters --scope cluster -u https://github.com/Azure/gitops-flux2-kustomize-helm-mt --branch main --kustomization name=infra path=./infrastructure prune=true --kustomization name=apps path=./apps/staging prune=true dependsOn=\["infra"\] -o $output
 }
 
 createPublicAKSClusterAzureContainerStorage() {
@@ -678,11 +686,10 @@ createPublicAKSClusterAzureMachineLearning() {
     createPublicAKSClusterWithRGAndVNET
     
     echo "Installing Azure Machine Learning extension"
-    az k8s-extension create --name azuremachinelearning --extension-type Microsoft.AzureML.Kubernetes --config enableTraining=True enableInference=True inferenceRouterServiceType=LoadBalancer allowInsecureConnections=True InferenceRouterHA=False --cluster-type managedClusters --cluster-name $aks --resource-group $rg --scope cluster
+    az k8s-extension create --name azuremachinelearning --extension-type Microsoft.AzureML.Kubernetes --config enableTraining=True enableInference=True inferenceRouterServiceType=LoadBalancer allowInsecureConnections=True InferenceRouterHA=False --cluster-type managedClusters --cluster-name $aks --resource-group $rg --scope cluster -o $output
 }
 
 createPublicAKSClusterAzureBackup() {
-
     echo "Creating AKS cluster"
     createPublicAKSClusterWithRGAndVNET
 
@@ -720,9 +727,9 @@ createPublicAKSClusterZoneAligned() {
     createPublicAKSClusterWithRGAndVNET "--node-count 3 --zones 1 2 3"
 
     echo "Add user node pools"
-    az aks nodepool add -g $rg --cluster-name $aks --name userpool1 --mode User --node-count 1 --node-vm-size $sku --zones 1
-    az aks nodepool add -g $rg --cluster-name $aks --name userpool2 --mode User --node-count 1 --node-vm-size $sku --zones 2
-    az aks nodepool add -g $rg --cluster-name $aks --name userpool3 --mode User --node-count 1 --node-vm-size $sku --zones 3
+    createAKSNodePool "--name userpool1 --zones 1 "
+    createAKSNodePool "--name userpool2 --zones 2 "
+    createAKSNodePool "--name userpool3 --zones 3 "
 }
 
 createPublicAKSClusterWindowsNodePool() {
@@ -730,7 +737,7 @@ createPublicAKSClusterWindowsNodePool() {
     createPublicAKSClusterWithRGAndVNET
 
     echo "Add new windows node pool"
-    az aks nodepool add --cluster-name $aks --name win -g $rg --os-type Windows --mode User --node-count 1 --node-vm-size Standard_D2s_v3
+    createAKSNodePool "--name win --os-type Windows "
 }
 
 createPublicAKSClusterNAP() {
@@ -745,7 +752,7 @@ createAzureMonitorAndGrafana() {
     az resource create -g $rg --namespace microsoft.monitor --resource-type accounts --name $monitorWorkspace --location $location --properties '{}' -o $output
 
     echo "Creating Grafana Instance"
-    az grafana create --name $grafana -g $rg
+    az grafana create --name $grafana -g $rg -o $output
 }
 
 createPublicAKSClusterNetworkObservability() {
@@ -753,9 +760,7 @@ createPublicAKSClusterNetworkObservability() {
     networkPolicy="cilium"
     networkDataplane="cilium"
 
-    createRG
-    createVNET
-    createUserAssignedManagedIdentity
+    createRgVnetUami
 
     createAzureMonitorAndGrafana
 
@@ -772,9 +777,7 @@ createACR() {
 
 createPublicAKSWithACR() {
     echo "Starting creation of AKS cluster with Azure Container Registry"
-    createRG
-    createVNET
-    createUserAssignedManagedIdentity
+    createRgVnetUami
     createACR
 
     echo "Importing nginx image to ACR: $acr"
@@ -789,7 +792,7 @@ createPublicAKSClusterSpotNodePool(){
     createPublicAKSClusterWithRGAndVNET
 
     echo "Creating Spot Node Pool"
-    az aks nodepool add -g $rg --cluster-name $aks --name spot --priority Spot --eviction-policy Delete --mode User --node-vm-size $sku --spot-max-price "-1" --enable-cluster-autoscaler --min-count 1 --max-count 3
+    createAKSNodePool "--name spot --priority Spot --eviction-policy Delete --spot-max-price "-1" $autoscaler "
 }
 
 createPublicAKSClusterVirtualMachinesNodePool(){
@@ -797,6 +800,10 @@ createPublicAKSClusterVirtualMachinesNodePool(){
     nodePoolType="VirtualMachines"
     minNodeCount=2
     createPublicAKSClusterWithRGAndVNET "--vm-sizes \"Standard_D2s_v5,Standard_D4s_v5\" $autoscaler "
+}
+
+createAKSNodePool(){
+    az aks nodepool add -g $rg --cluster-name $aks --mode $nodePoolMode --node-count $minNodeCount --node-vm-size $sku -o $output $1
 }
 
 createAKSCluster() {
@@ -810,11 +817,14 @@ createAKSCluster() {
     echo "Download cluster credentials: az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"
 }
 
-createPublicAKSClusterWithRGAndVNET() {
+createRgVnetUami() {
     createRG
     createVNET
     createUserAssignedManagedIdentity
+}
 
+createPublicAKSClusterWithRGAndVNET() {
+    createRgVnetUami
     createAKSCluster "$1"
 }
 
@@ -853,9 +863,7 @@ createPrivateAKSClusterUDR() {
     minNodeCount=2
     outboundType="userDefinedRouting"
 
-    createRG
-    createVNET
-    createUserAssignedManagedIdentity
+    createRgVnetUami
     createAzureFirewall
 
     fwPublicIP=$(az network public-ip show -g $rg -n $firewallPublicIP --query "ipAddress" -o tsv)
@@ -878,12 +886,8 @@ createPrivateAKSCluster(){
 
 createPrivateAKSClusterWithRGAndVnet() {
     echo "Creating Private AKS Cluster"
-    createRG
-    createVNET
-    createUserAssignedManagedIdentity
-
+    createRgVnetUami
     createPrivateAKSCluster "$1"
-
     createVM
 }
 

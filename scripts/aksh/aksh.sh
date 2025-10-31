@@ -298,6 +298,10 @@ aksTemplates() {
     echo "## 61 - Private AKS cluster with API VNet Integration         ##"
     echo "## 62 - Private AKS cluster with User Defined Routing         ##"
     echo "## ---------------------------------------------------------- ##"
+    echo "##                    AUTOMATIC CLUSTERS                      ##"
+    echo "## ---------------------------------------------------------- ##"
+    echo "## 70 - Automatic AKS cluster                                 ##"
+    echo "## ---------------------------------------------------------- ##"
     echo "################################################################"
 
     while read -p "Option: " opt; do
@@ -456,6 +460,11 @@ aksTemplates() {
             ;;
         62)
             createPrivateAKSClusterUDR
+            break
+            ;;
+        ## AUTOMATIC CLUSTERS ##
+        70)
+            createPublicAutomaticAKSCluster
             break
             ;;
         esac
@@ -889,6 +898,19 @@ createPrivateAKSClusterWithRGAndVnet() {
     createRgVnetUami
     createPrivateAKSCluster "$1"
     createVM
+}
+
+###########################################
+########## AutomaticAKS Cluster ###########
+createPublicAutomaticAKSCluster(){
+    echo "Creating Automatic AKS cluster"
+    hasAPISubnet=true
+    networkPolicy="cilium"
+    networkDataplane="cilium"
+    sku="Standard_D4ads_v6"
+
+    createRgVnetUami
+    createAKSCluster "--apiserver-subnet-id $apiSubnetId --sku automatic --node-provisioning-mode Auto "
 }
 
 ###########################################

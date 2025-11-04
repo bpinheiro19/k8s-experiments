@@ -43,7 +43,7 @@ virtualNodeSubnetAddr=10.0.243.0/24
 podSubnetAddr=10.0.244.0/22
 
 #VM
-vm="aksVM"
+vm="aksVM$date"
 vmImage="Ubuntu2204"
 adminUser="azureuser"
 sshLocation="~/.ssh/id_rsa.pub"
@@ -842,7 +842,8 @@ createPublicAKSClusterWithRGAndVNET() {
 createPrivateAKSClusterAPIIntegration() {
     echo "Creating private AKS Cluster with API Vnet Integration"
     hasAPISubnet=true
-    createPrivateAKSClusterWithRGAndVnet "--enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId "
+    createRgVnetUami
+    createAKSCluster "--enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId "
 }
 
 createAzureFirewall() {
@@ -940,7 +941,7 @@ listAKS(){
 
     size=${#clusters[@]}
 
-    if [ size -eq 0 ]; then
+    if [ $size -eq 0 ]; then
         echo "No AKS Clusters"
     else
         echo "################################################################"

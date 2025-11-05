@@ -291,6 +291,7 @@ aksTemplates() {
     echo "## 56 - AKS cluster with ACR                                  ##"
     echo "## 57 - AKS cluster with Spot Node Pool                       ##"
     echo "## 58 - AKS cluster with Virtual Machines Node Pool           ##"
+    echo "## 59 - AKS cluster with GPU Spot Node Pool                   ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
@@ -447,6 +448,10 @@ aksTemplates() {
             ;;
         58)
             createPublicAKSClusterVirtualMachinesNodePool
+            break
+            ;;
+        59)
+            createPublicAKSClusterGPUSpotNodePool
             break
             ;;
         ## PRIVATE CLUSTERS ##
@@ -809,6 +814,16 @@ createPublicAKSClusterVirtualMachinesNodePool(){
     nodePoolType="VirtualMachines"
     minNodeCount=2
     createPublicAKSClusterWithRGAndVNET "--vm-sizes \"Standard_D2s_v5,Standard_D4s_v5\" $autoscaler "
+}
+
+createPublicAKSClusterGPUSpotNodePool(){
+    echo "Creating AKS cluster with GPU Spot Node Pool"
+    createPublicAKSClusterWithRGAndVNET 
+
+    echo "Creating GPU Spot Node Pool"
+    minNodeCount=0
+    sku="Standard_NC4as_T4_v3"
+    createAKSNodePool "--name spot --priority Spot --eviction-policy Delete --spot-max-price "-1" --mode User --node-count 1 $autoscaler "
 }
 
 createAKSNodePool(){

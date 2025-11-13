@@ -812,8 +812,8 @@ createPublicAKSClusterSpotNodePool(){
 createPublicAKSClusterVirtualMachinesNodePool(){
     echo "Creating AKS cluster with Virtual Machines Node Pool"
     nodePoolType="VirtualMachines"
-    minNodeCount=2
-    createPublicAKSClusterWithRGAndVNET "--vm-sizes \"Standard_D2s_v5,Standard_D4s_v5\" $autoscaler "
+    createPublicAKSClusterWithRGAndVNET "--vm-sizes $sku "
+    az aks nodepool manual-scale add -g $rg --cluster-name $aks --name nodepool1 --vm-sizes "Standard_D4s_v5" --node-count $minNodeCount -o $output
 }
 
 createPublicAKSClusterGPUSpotNodePool(){

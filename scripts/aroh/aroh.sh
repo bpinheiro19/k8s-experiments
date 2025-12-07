@@ -2,23 +2,26 @@
 
 date="$(date +%s)"
 rg="aro-rg"
-location="uksouth"
+location="swedencentral"
 
 #ARO
-spName="aro-cluster-SP-$date"
 aro="aro$date"
+version="4.18.26"
 serviceCidr=10.0.248.0/22
-masterSku="standard_d8s_v3"
-workerSku="standard_d4s_v3"
+masterSku="Standard_D8s_v3"
+workerSku="Standard_D4s_v3"
 nodeCount=3
 
 #VNET
-vnet="vnet$date"
+vnet="aro-vnet$date"
 vnetAddr=10.0.0.0/16
-masterSubnet="master-subnet$date"
-workerSubnet="worker-subnet$date"
+masterSubnet="master"
+workerSubnet="worker"
 masterSubnetAddr=10.0.240.0/23
 workerSubnetAddr=10.0.244.0/23
+
+#SP
+spName="aro-cluster-SP-$date"
 
 #VM
 vm="aksVM"
@@ -36,53 +39,37 @@ register(){
 }
 
 aro() {
+    header
+    echo "## 01 - Public Azure Red Hat OpenShift Cluster                    ##"
+    echo "## 02 - Private Azure Red Hat OpenShift Cluster                   ##"
+    echo "####################################################################"
 
-    for arg in "$@"; do
+    while read -p "Option: " opt; do
 
-        case "$arg" in
-        create)
+        case $opt in
+        1)
             register
-            createPublicCluster
+            createPublicAROCluster
             break
             ;;
-            
-        private)
+        2)
             register
-            createPrivateCluster
+            createPrivateAROCluster
             break
-            ;;
-            
-        delrg)
-            echo "Deleting resource group"
-            az group delete -n $rg
-            ;;
-        -h | --help)
-            help
-            ;;
-        *)
-            echo "Invalid arguments"
-            help
-            exit 1
             ;;
         esac
     done
 }
 
-help() {
-    echo 'Help:'
-    echo "Create an ARO cluster"
-    echo '$ aroh create'
-    echo ""
-     echo "Delete the resource group"
-    echo "$ aroh delete"
-    echo ""
-}
-
+###############################################
+############## Resource Group #################
 createRG(){
     echo "Creating the resource group"
     az group create -n $rg -l $location
 }
 
+###############################################
+############# Virtual Network #################
 createVNET(){
     echo "Creating vnet and subnet"
     az network vnet create -g $rg -n $vnet --address-prefix $vnetAddr
@@ -91,10 +78,22 @@ createVNET(){
     az network vnet subnet create  -g $rg -n $workerSubnet --vnet-name  $vnet --address-prefixes $workerSubnetAddr
 }
 
-createPublicCluster() {
-    
-    createRG
+###############################################
+########### Azure RedHat Openshift ############
 
+createAROClusterWithRGAndVNET() {
+    createRG
+    createVNET
+    createAROCluster "$1"
+}
+
+createAROCluster(){
+    echo "Creating ARO cluster"
+    az aro create --resource-group $rg --name  $aro --version $version --vnet $vnet --service-cidr $serviceCidr --master-subnet $masterSubnet --worker-subnet $workerSubnet --master-vm-size $masterSku --worker-vm-size $workerSku $1
+}
+
+createPublicCluster() {
+    createRG
     createVNET
 
     masterSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $masterSubnet --query id -o tsv)
@@ -114,13 +113,10 @@ createPublicCluster() {
     apiServer=$(az aro show -g $rg -n $aro --query apiserverProfile.url -o tsv)
     kubeAdminPassword=$( az aro list-credentials -g $rg -n $aro --query kubeadminPassword -o tsv)
     echo "oc login $apiServer -u kubeadmin -p $kubeAdminPassword"
-
 }
 
 createPrivateCluster() {
-    
     createRG
-
     createVNET
 
     masterSubnetId=$(az network vnet subnet show -g $rg --vnet-name $vnet -n $masterSubnet --query id -o tsv)
@@ -137,15 +133,81 @@ createVM(){
     az vm create -g $rg -n $vm --image $vmImage --vnet-name $vnet --admin-username $adminUser --ssh-key-value $sshLocation
 }
 
-main() {
-    if [ -z "$1" ]; then
-        echo "No arguments!"
-        echo ""
-        help
-        return 1
-    fi
+header() {
+    echo "################################################################"
+    echo "##                                                            ##"
+    echo "##              Azure RedHat Openshift Helper                 ##"
+    echo "##                                                            ##"
+    echo "################################################################"
+}
 
-    aro $@
+main() {
+    header
+    echo "## 01 - Create Azure RedHat Openshift Cluster                  ##"
+    echo "## 02 - List Azure RedHat Openshift Clusters                   ##"
+    echo "## 03 - Delete Azure RedHat Openshift Cluster                  ##"
+    echo "## 04 - Delete resource group (aro-rg)                         ##"
+    echo "################################################################"
+    while read -p "Option: " opt; do
+
+        case $opt in
+        1)
+            aro
+            break
+            ;;
+        2)
+            mapfile -t clusters < <(az aro list -g $rg --only-show-errors -o tsv --query '[].[name]')
+
+            if [ ${#clusters[@]} -eq 0 ]; then
+                echo "No Azure RedHat Openshift Clusters"
+            else
+                echo "################################################################"
+                echo "##                Azure RedHat Openshift Clusters                   ##"
+                echo "################################################################"
+                for i in "${!clusters[@]}"; do
+                    printf "## $(($i + 1)) - ${clusters[i]}                                      ##\n"
+                done
+                echo "################################################################"
+            fi
+
+            break
+            ;;
+        3)
+            mapfile -t clusters < <(az aro list -g $rg --only-show-errors -o tsv --query '[].[name]')
+
+            size=${#clusters[@]}
+
+            if [ $size -eq 0 ]; then
+                echo "No Azure RedHat Openshift Clusters"
+            else
+                echo "################################################################"
+                echo "##                Azure RedHat Openshift Clusters           ##"
+                echo "################################################################"
+                for i in "${!clusters[@]}"; do
+                    printf "## $(($i + 1)) - ${clusters[i]}                                      ##\n"
+                done
+                echo "################################################################"
+
+                read -p "Enter the cluster number: " index
+
+                if [[ $index =~ ^[0-9]+$ ]] && (( $index <= size )); then
+                  cluster=${clusters[index-1]}
+                  echo "Deleting the Azure RedHat Openshift Cluster - $cluster"
+                  az aro delete --name $cluster --resource-group $rg --yes
+                else
+                  echo "$index is NOT a valid index."
+                fi                
+            fi
+
+            break
+            ;;
+        4)
+            echo "Deleting the aro-rg resource group"
+            az group delete -n $rg --no-wait
+            break
+            ;;
+        esac
+    done
 }
 
 main $@

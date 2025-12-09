@@ -41,7 +41,8 @@ register(){
 aro() {
     header
     echo "## 01 - Public Azure Red Hat OpenShift Cluster                    ##"
-    echo "## 02 - Private Azure Red Hat OpenShift Cluster                   ##"
+    echo "## 02 - Azure Red Hat OpenShift Cluster with Managed Identities   ##"
+    echo "## 03 - Private Azure Red Hat OpenShift Cluster                   ##"
     echo "####################################################################"
 
     while read -p "Option: " opt; do
@@ -52,7 +53,12 @@ aro() {
             createPublicAROCluster
             break
             ;;
-        2)
+        2)  
+            register
+            createPublicAROClusterManagedIdentities
+            break
+            ;;
+        3)
             register
             createPrivateAROCluster
             break
@@ -76,6 +82,49 @@ createVNET(){
 
     az network vnet subnet create -g $rg -n $masterSubnet --vnet-name  $vnet --address-prefixes $masterSubnetAddr
     az network vnet subnet create  -g $rg -n $workerSubnet --vnet-name  $vnet --address-prefixes $workerSubnetAddr
+}
+
+###############################################
+################# Identities ##################
+createIdentities(){
+    echo "Creating user assigned identities"
+    az identity create --resource-group $rg --name aro-cluster
+    az identity create --resource-group $rg --name cloud-controller-manager
+    az identity create --resource-group $rg --name ingress
+    az identity create --resource-group $rg --name machine-api
+    az identity create --resource-group $rg --name disk-csi-driver
+    az identity create --resource-group $rg --name cloud-network-config
+    az identity create --resource-group $rg --name image-registry
+    az identity create --resource-group $rg --name file-csi-driver
+    az identity create --resource-group $rg --name aro-operator
+}
+
+assignPermissions(){
+    echo "Assigning permissions to the identities"
+    SUBSCRIPTION_ID=$(az account show --query 'id' -o tsv)
+
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-cluster --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" --scope "/subscriptions/$SUBSCRIPTION_ID/resourcegroups/$rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aro-operator"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-cluster --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" --scope "/subscriptions/$SUBSCRIPTION_ID/resourcegroups/$rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cloud-controller-manager"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-cluster --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" --scope "/subscriptions/$SUBSCRIPTION_ID/resourcegroups/$rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ingress"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-cluster --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" --scope "/subscriptions/$SUBSCRIPTION_ID/resourcegroups/$rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/machine-api"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-cluster --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" --scope "/subscriptions/$SUBSCRIPTION_ID/resourcegroups/$rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/disk-csi-driver"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-cluster --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" --scope "/subscriptions/$SUBSCRIPTION_ID/resourcegroups/$rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cloud-network-config"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-cluster --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" --scope "/subscriptions/$SUBSCRIPTION_ID/resourcegroups/$rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/image-registry"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-cluster --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/ef318e2a-8334-4a05-9e4a-295a196c6a6e" --scope "/subscriptions/$SUBSCRIPTION_ID/resourcegroups/$rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/file-csi-driver"
+
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name cloud-controller-manager --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/a1f96423-95ce-4224-ab27-4e3dc72facd4" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet/subnets/master"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name cloud-controller-manager --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/a1f96423-95ce-4224-ab27-4e3dc72facd4" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet/subnets/worker"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name ingress --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/0336e1d3-7a87-462b-b6db-342b63f7802c" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet/subnets/master"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name ingress --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/0336e1d3-7a87-462b-b6db-342b63f7802c" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet/subnets/worker"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name machine-api --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/0358943c-7e01-48ba-8889-02cc51d78637" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet/subnets/master"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name machine-api --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/0358943c-7e01-48ba-8889-02cc51d78637" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet/subnets/worker"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name cloud-network-config --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/be7a6435-15ae-4171-8f30-4a343eff9e8f" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name file-csi-driver --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/0d7aedc0-15fd-4a67-a412-efad370c947e" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name image-registry --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/8b32b316-c2f5-4ddf-b05b-83dacd2d08b5" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-operator --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/4436bae4-7702-4c84-919b-c4069ff25ee2" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet/subnets/master"
+    az role assignment create --assignee-object-id "$(az identity show --resource-group $rg --name aro-operator --query principalId -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/4436bae4-7702-4c84-919b-c4069ff25ee2" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet/subnets/worker"
+    
+    az role assignment create --assignee-object-id "$(az ad sp list --display-name "Azure Red Hat OpenShift RP" --query '[0].id' -o tsv)" --assignee-principal-type ServicePrincipal --role "/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7" --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$rg/providers/Microsoft.Network/virtualNetworks/$vnet"
 }
 
 ###############################################
@@ -113,6 +162,16 @@ createPublicCluster() {
     apiServer=$(az aro show -g $rg -n $aro --query apiserverProfile.url -o tsv)
     kubeAdminPassword=$( az aro list-credentials -g $rg -n $aro --query kubeadminPassword -o tsv)
     echo "oc login $apiServer -u kubeadmin -p $kubeAdminPassword"
+}
+
+## Preview Feature ##
+createPublicAROClusterManagedIdentities(){
+    createRG
+    createVNET
+    createIdentities
+    assignPermissions
+
+    createAROCluster "--enable-managed-identity --assign-cluster-identity aro-cluster --assign-platform-workload-identity file-csi-driver file-csi-driver --assign-platform-workload-identity cloud-controller-manager cloud-controller-manager --assign-platform-workload-identity ingress ingress --assign-platform-workload-identity image-registry image-registry --assign-platform-workload-identity machine-api machine-api --assign-platform-workload-identity cloud-network-config cloud-network-config --assign-platform-workload-identity aro-operator aro-operator --assign-platform-workload-identity disk-csi-driver disk-csi-driver"
 }
 
 createPrivateCluster() {

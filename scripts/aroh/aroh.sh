@@ -38,7 +38,7 @@ register(){
     az feature register --namespace Microsoft.RedHatOpenShift --name preview
 }
 
-aro() {
+createARO() {
     header
     echo "## 01 - Public Azure Red Hat OpenShift Cluster                    ##"
     echo "## 02 - Azure Red Hat OpenShift Cluster with Managed Identities   ##"
@@ -200,6 +200,46 @@ header() {
     echo "################################################################"
 }
 
+listARO(){
+    mapfile -t clusters < <(az aro list -g $rg --only-show-errors -o tsv --query '[].[name]')
+
+    size=${#clusters[@]}
+    if [ $size -eq 0 ]; then
+        echo "No Azure RedHat Openshift Clusters"
+    else
+        echo "################################################################"
+        echo "##                Azure RedHat Openshift Clusters                   ##"
+        echo "################################################################"
+        for i in $(seq 1 $size); do
+            printf "## $(($i)) - ${clusters[i-1]}                                            ##\n"
+        done
+        echo "################################################################"
+    fi
+}
+
+deleteARO(){
+    listARO
+
+    if [ $size -ne 0 ]; then
+
+        read -p "Enter the cluster number: " index
+
+        if [[ $index =~ ^[1-9]+$ ]] && (( $index <= $size )); then
+            cluster=${clusters[index-1]}
+            echo "Deleting the Azure RedHat Openshift Cluster - $cluster"
+            az aro delete --name $cluster --resource-group $rg --yes
+        else
+            echo "Selected index ($index) is not valid."
+        fi
+    fi
+}
+
+deleteRG(){
+    echo "Deleting $rg resource group"
+    az group delete -n $rg --no-wait
+}
+
+
 main() {
     header
     echo "## 01 - Create Azure RedHat Openshift Cluster                  ##"
@@ -211,58 +251,19 @@ main() {
 
         case $opt in
         1)
-            aro
+            createARO
             break
             ;;
         2)
-            mapfile -t clusters < <(az aro list -g $rg --only-show-errors -o tsv --query '[].[name]')
-
-            if [ ${#clusters[@]} -eq 0 ]; then
-                echo "No Azure RedHat Openshift Clusters"
-            else
-                echo "################################################################"
-                echo "##                Azure RedHat Openshift Clusters                   ##"
-                echo "################################################################"
-                for i in "${!clusters[@]}"; do
-                    printf "## $(($i + 1)) - ${clusters[i]}                                      ##\n"
-                done
-                echo "################################################################"
-            fi
-
+            listARO
             break
             ;;
         3)
-            mapfile -t clusters < <(az aro list -g $rg --only-show-errors -o tsv --query '[].[name]')
-
-            size=${#clusters[@]}
-
-            if [ $size -eq 0 ]; then
-                echo "No Azure RedHat Openshift Clusters"
-            else
-                echo "################################################################"
-                echo "##                Azure RedHat Openshift Clusters           ##"
-                echo "################################################################"
-                for i in "${!clusters[@]}"; do
-                    printf "## $(($i + 1)) - ${clusters[i]}                                      ##\n"
-                done
-                echo "################################################################"
-
-                read -p "Enter the cluster number: " index
-
-                if [[ $index =~ ^[0-9]+$ ]] && (( $index <= size )); then
-                  cluster=${clusters[index-1]}
-                  echo "Deleting the Azure RedHat Openshift Cluster - $cluster"
-                  az aro delete --name $cluster --resource-group $rg --yes
-                else
-                  echo "$index is NOT a valid index."
-                fi                
-            fi
-
+            deleteARO
             break
             ;;
         4)
-            echo "Deleting the aro-rg resource group"
-            az group delete -n $rg --no-wait
+            deleteRG
             break
             ;;
         esac

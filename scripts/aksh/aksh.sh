@@ -10,7 +10,8 @@ output="none"
 
 #AKS
 aks="aks$date"
-aksVersion="1.31.8"
+aksVersion="1.32.9"
+aksTier="Free"
 networkPlugin="azure"
 networkPolicy="none"
 networkDataplane="azure"
@@ -49,7 +50,7 @@ adminUser="azureuser"
 sshLocation="~/.ssh/id_rsa.pub"
 
 #AppGw
-appGw="myApplicationGateway"
+appGw="myApplicationGateway$date"
 appGwSubnet="appgw-subnet"
 appGwSubnetAddr="10.0.1.0/24"
 publicIp="myPublicIp"
@@ -292,16 +293,17 @@ aksTemplates() {
     echo "## 57 - AKS cluster with Spot Node Pool                       ##"
     echo "## 58 - AKS cluster with Virtual Machines Node Pool           ##"
     echo "## 59 - AKS cluster with GPU Spot Node Pool                   ##"
+    echo "## 60 - AKS cluster with Long Term Support                    ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 60 - Private AKS cluster                                   ##"
-    echo "## 61 - Private AKS cluster with API VNet Integration         ##"
-    echo "## 62 - Private AKS cluster with User Defined Routing         ##"
+    echo "## 70 - Private AKS cluster                                   ##"
+    echo "## 71 - Private AKS cluster with API VNet Integration         ##"
+    echo "## 72 - Private AKS cluster with User Defined Routing         ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                    AUTOMATIC CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 70 - Automatic AKS cluster                                 ##"
+    echo "## 80 - Automatic AKS cluster                                 ##"
     echo "## ---------------------------------------------------------- ##"
     echo "################################################################"
 
@@ -454,21 +456,25 @@ aksTemplates() {
             createPublicAKSClusterGPUSpotNodePool
             break
             ;;
+        60) 
+            createPublicAKSClusterLongTermSupport
+            break
+            ;;
         ## PRIVATE CLUSTERS ##
-        60)
+        70)
             createPrivateAKSClusterWithRGAndVnet
             break
             ;;
-        61)
+        71)
             createPrivateAKSClusterAPIIntegration
             break
             ;;
-        62)
+        72)
             createPrivateAKSClusterUDR
             break
             ;;
         ## AUTOMATIC CLUSTERS ##
-        70)
+        80)
             createPublicAutomaticAKSCluster
             break
             ;;
@@ -637,7 +643,6 @@ createPublicAKSClusterAGIC() {
     createAppGw
 
     appgwId=$(az network application-gateway show --name $appGw -g $rg -o tsv --query "id")
-
     createAKSCluster "--enable-addons ingress-appgw --appgw-id $appgwId"
 }
 
@@ -826,6 +831,13 @@ createPublicAKSClusterGPUSpotNodePool(){
     createAKSNodePool "--name spot --priority Spot --eviction-policy Delete --spot-max-price "-1" --mode User --node-count 1 $autoscaler "
 }
 
+createPublicAKSClusterLongTermSupport(){
+    echo "Creating AKS cluster with Long Term Support"
+    aksTier="premium"
+    aksVersion="1.29.101"
+    createPublicAKSClusterWithRGAndVNET "--k8s-support-plan AKSLongTermSupport --auto-upgrade-channel patch"
+}
+
 createAKSNodePool(){
     az aks nodepool add -g $rg --cluster-name $aks --mode $nodePoolMode --node-count $minNodeCount --node-vm-size $sku -o $output $1
 }
@@ -835,7 +847,7 @@ createAKSCluster() {
     identityResourceId=$(az identity show --resource-group $rg --name $aksUAMIdentity --query id -o tsv)
 
     echo "Creating AKS Cluster - ${aks}"
-    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $minNodeCount --vm-set-type $nodePoolType --outbound-type $outboundType --assign-identity $identityResourceId -o $output $1
+    az aks create -g $rg -n $aks -l $location --kubernetes-version $aksVersion --tier $aksTier --network-plugin $networkPlugin --network-policy $networkPolicy --network-dataplane $networkDataplane --vnet-subnet-id $aksSubnetId --service-cidr $serviceCidr --dns-service-ip $dnsIp --node-vm-size $sku --node-count $minNodeCount --vm-set-type $nodePoolType --outbound-type $outboundType --assign-identity $identityResourceId -o $output $1
 
     echo "AKS Cluster created successfully"
     echo "Download cluster credentials: az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG"

@@ -72,8 +72,8 @@ backupvault="backupVault$date"
 
 #Others
 keyVaultName="akskeyvault$date"
-grafana="aksgrafana"
-monitorWorkspace="aksmonitor"
+grafana="aksgrafana$date"
+monitorWorkspace="aksmonitor$date"
 acr="aksacr$date"
 
 ############################################
@@ -294,6 +294,7 @@ aksTemplates() {
     echo "## 58 - AKS cluster with Virtual Machines Node Pool           ##"
     echo "## 59 - AKS cluster with GPU Spot Node Pool                   ##"
     echo "## 60 - AKS cluster with Long Term Support                    ##"
+    echo "## 61 - AKS cluster with ArgoCD                               ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
@@ -458,6 +459,10 @@ aksTemplates() {
             ;;
         60) 
             createPublicAKSClusterLongTermSupport
+            break
+            ;;
+        61) 
+            createPublicAKSClusterArgoCD
             break
             ;;
         ## PRIVATE CLUSTERS ##
@@ -836,6 +841,16 @@ createPublicAKSClusterLongTermSupport(){
     aksTier="premium"
     aksVersion="1.29.101"
     createPublicAKSClusterWithRGAndVNET "--k8s-support-plan AKSLongTermSupport --auto-upgrade-channel patch"
+}
+
+createPublicAKSClusterArgoCD(){
+    echo "Creating AKS cluster with ArgoCD"
+    createPublicAKSClusterWithRGAndVNET
+
+    echo "Changing kubectl context to $aks"
+    az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG
+    kubectl create namespace argocd
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 }
 
 createAKSNodePool(){

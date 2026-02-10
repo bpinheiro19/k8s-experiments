@@ -295,6 +295,7 @@ aksTemplates() {
     echo "## 59 - AKS cluster with GPU Spot Node Pool                   ##"
     echo "## 60 - AKS cluster with Long Term Support                    ##"
     echo "## 61 - AKS cluster with ArgoCD                               ##"
+    echo "## 62 - AKS cluster with Istio Ingress Gateway                ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
@@ -463,6 +464,10 @@ aksTemplates() {
             ;;
         61) 
             createPublicAKSClusterArgoCD
+            break
+            ;;
+        62) 
+            createPublicAKSClusterIstioIngressGateway
             break
             ;;
         ## PRIVATE CLUSTERS ##
@@ -851,6 +856,13 @@ createPublicAKSClusterArgoCD(){
     az aks get-credentials --resource-group $rg --name $aks -f $KUBECONFIG
     kubectl create namespace argocd
     kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+}
+
+createPublicAKSClusterIstioIngressGateway() {
+    echo "Creating AKS cluster with Istio Ingress Gateway"
+    createPublicAKSClusterWithRGAndVNET "--enable-azure-service-mesh $autoscaler"
+
+    az aks mesh enable-ingress-gateway -g $rg -n $aks --ingress-gateway-type external
 }
 
 createAKSNodePool(){

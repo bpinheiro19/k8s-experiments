@@ -296,6 +296,8 @@ aksTemplates() {
     echo "## 60 - AKS cluster with Long Term Support                    ##"
     echo "## 61 - AKS cluster with ArgoCD                               ##"
     echo "## 62 - AKS cluster with Istio Ingress Gateway                ##"
+    echo "## 63 - AKS cluster with Istio Egress Gateway                 ##"
+    echo "## 64 - AKS cluster with API VNet Integration                 ##"
     echo "## ---------------------------------------------------------- ##"
     echo "##                      PRIVATE CLUSTERS                      ##"
     echo "## ---------------------------------------------------------- ##"
@@ -470,13 +472,21 @@ aksTemplates() {
             createPublicAKSClusterIstioIngressGateway
             break
             ;;
+        63) 
+            createPublicAKSClusterIstioEgressGateway
+            break
+            ;;
+        64)
+            createPublicAKSClusterAPIVnetIntegration
+            break
+            ;;
         ## PRIVATE CLUSTERS ##
         70)
             createPrivateAKSClusterWithRGAndVnet
             break
             ;;
         71)
-            createPrivateAKSClusterAPIIntegration
+            createPrivateAKSClusterAPIVnetIntegration
             break
             ;;
         72)
@@ -865,6 +875,16 @@ createPublicAKSClusterIstioIngressGateway() {
     az aks mesh enable-ingress-gateway -g $rg -n $aks --ingress-gateway-type external
 }
 
+createPublicAKSClusterIstioEgressGateway() {
+}
+
+createPublicAKSClusterAPIVnetIntegration() {
+    echo "Creating Public AKS Cluster with API Vnet Integration"
+    hasAPISubnet=true
+    createRgVnetUami
+    createAKSCluster "--enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId "
+}
+
 createAKSNodePool(){
     az aks nodepool add -g $rg --cluster-name $aks --mode $nodePoolMode --node-count $minNodeCount --node-vm-size $sku -o $output $1
 }
@@ -893,11 +913,11 @@ createPublicAKSClusterWithRGAndVNET() {
 
 ###########################################
 ########### Private AKS Cluster ###########
-createPrivateAKSClusterAPIIntegration() {
+createPrivateAKSClusterAPIVnetIntegration() {
     echo "Creating private AKS Cluster with API Vnet Integration"
     hasAPISubnet=true
     createRgVnetUami
-    createAKSCluster "--enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId "
+    createPrivateAKSCluster "--enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId "
 }
 
 createAzureFirewall() {

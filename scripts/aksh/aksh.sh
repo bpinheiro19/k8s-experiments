@@ -830,8 +830,7 @@ createPublicAKSClusterSpotNodePool(){
     echo "Creating AKS cluster with Spot Node Pool"
     createPublicAKSClusterWithRGAndVNET
 
-    echo "Creating Spot Node Pool"
-    createAKSNodePool "--name spot --priority Spot --eviction-policy Delete --spot-max-price "-1" $autoscaler "
+    createAKSSpotNodePool
 }
 
 createPublicAKSClusterVirtualMachinesNodePool(){
@@ -848,7 +847,7 @@ createPublicAKSClusterGPUSpotNodePool(){
     echo "Creating GPU Spot Node Pool"
     minNodeCount=0
     sku="Standard_NC4as_T4_v3"
-    createAKSNodePool "--name spot --priority Spot --eviction-policy Delete --spot-max-price "-1" --mode User --node-count 1 $autoscaler "
+    createAKSSpotNodePool "--node-count 1 "
 }
 
 createPublicAKSClusterLongTermSupport(){
@@ -883,6 +882,11 @@ createPublicAKSClusterAPIVnetIntegration() {
     hasAPISubnet=true
     createRgVnetUami
     createAKSCluster "--enable-apiserver-vnet-integration --apiserver-subnet-id $apiSubnetId "
+}
+
+createAKSSpotNodePool(){
+    echo "Creating Spot Node Pool"
+    createAKSNodePool "--name spot --mode User --priority Spot --eviction-policy Delete --spot-max-price "-1" $autoscaler $1"
 }
 
 createAKSNodePool(){

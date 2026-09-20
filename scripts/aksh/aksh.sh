@@ -283,7 +283,7 @@ aksTemplates() {
     echo "## ---------------------------------------------------------- ##"
     echo "##                           OTHERS                           ##"
     echo "## ---------------------------------------------------------- ##"
-    echo "## 50 - AKS cluster with App Routing                          ##"
+    echo "## 50 - AKS cluster with Application Routing Gateway API      ##"
     echo "## 51 - AKS cluster with Azure Linux Nodes                    ##"
     echo "## 52 - AKS cluster with Zone Aligned Node Pools              ##"
     echo "## 53 - AKS cluster with Windows Node Pool                    ##"
@@ -752,8 +752,8 @@ createPublicAKSClusterAzureBackup() {
 }
 
 createPublicAKSClusterAppRouting() {
-    echo "Creating AKS cluster with app routing addon"
-    createPublicAKSClusterWithRGAndVNET "--enable-app-routing"
+    echo "Creating AKS cluster with Application Routing Gateway API Addon"
+    createPublicAKSClusterWithRGAndVNET "--enable-gateway-api --enable-app-routing-istio"
 }
 
 createPublicAKSClusterAzureLinux() {
